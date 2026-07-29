@@ -1,8 +1,9 @@
-# Nestjs specific
+# Build and dependencies
 /dist
 /node_modules
 /build
 /tmp
+.npm-cache
 
 # Logs
 logs
@@ -22,3 +23,9 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+
+# Local editor and OS files
+.DS_Store
+*.local
+.vscode/*
+!.vscode/extensions.json
