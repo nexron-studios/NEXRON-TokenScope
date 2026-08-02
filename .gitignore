@@ -1,9 +1,23 @@
 # Build and dependencies
-/dist
-/node_modules
-/build
-/tmp
+dist/
+.vite/
+node_modules/
+build/
+tmp/
 .npm-cache
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Lokale Snapshot-Datenbank, gehört niemals ins Repo
+backend/data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 
 # Logs
 logs

@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Inter, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --color-shell-950: #0c0c0f;
+  --color-shell-900: #111114;
+  --color-shell-800: #16161a;
+}
+
+:root {
+  color: #ececf1;
+  background: #0c0c0f;
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  /* Kiosk auf dem 7"-Panel: die Seite selbst scrollt nie, nur einzelne
+     Flächen im Inneren. */
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background:
+    radial-gradient(circle at 14% 4%, rgb(217 119 87 / 9%), transparent 26rem),
+    radial-gradient(circle at 88% 2%, rgb(0 163 163 / 8%), transparent 24rem),
+    #0c0c0f;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+[role="switch"]:focus-visible,
+[role="radio"]:focus-visible {
+  outline: 2px solid #d97757;
+  outline-offset: 2px;
+}
+
+::selection {
+  color: #170d09;
+  background: #d97757;
+}
+
+/* Schmale Bildlaufleiste - auf Touch wird gewischt, nicht gegriffen. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
