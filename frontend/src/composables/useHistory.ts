@@ -1,5 +1,5 @@
 import { onBeforeUnmount, ref, shallowRef } from 'vue'
-import { api, ApiError } from '@/api/client'
+import { api, errorText } from '@/api/client'
 import type { HistoryResponse, LogGroupBy, LogSummary } from '@/api/types'
 
 export function useHistory() {
@@ -20,8 +20,7 @@ export function useHistory() {
       }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === 'AbortError') return
-      error.value =
-        caught instanceof ApiError ? caught.message : 'Verlauf nicht ladbar.'
+      error.value = errorText(caught, 'Verlauf nicht ladbar.')
     }
   }
 
@@ -49,8 +48,7 @@ export function useLogSummary() {
       }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === 'AbortError') return
-      error.value =
-        caught instanceof ApiError ? caught.message : 'Logs nicht auswertbar.'
+      error.value = errorText(caught, 'Logs nicht auswertbar.')
     } finally {
       if (!current.signal.aborted) loading.value = false
     }

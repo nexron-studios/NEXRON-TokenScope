@@ -12,7 +12,8 @@ import LogsView from '@/views/LogsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 
 const { settings } = useSettings()
-const { usage, health, providers, isDemo, loading, backendError, load } = useUsage()
+const { usage, health, providers, isDemo, loading, backendError, backendHint, load } =
+  useUsage()
 const { history, load: loadHistory } = useHistory()
 
 /**
@@ -93,7 +94,10 @@ const shellClass = computed(() => ({
       :history="history"
       :history-hours="settings.historyHours"
       :backend-error="backendError"
+      :backend-hint="backendHint"
+      :loading="loading"
       :large-text="settings.largeText"
+      @retry="refreshNow"
     />
     <LogsView v-else-if="view === 'logs'" />
     <SettingsView v-else :health="health" @changed="refresh" />

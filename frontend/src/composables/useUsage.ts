@@ -14,6 +14,7 @@ export function useUsage() {
   const health = shallowRef<HealthResponse>()
   const loading = ref(false)
   const backendError = ref<string>()
+  const backendHint = ref<string>()
   let controller: AbortController | undefined
 
   const providers = computed(() =>
@@ -39,12 +40,14 @@ export function useUsage() {
       usage.value = nextUsage
       if (nextHealth) health.value = nextHealth
       backendError.value = undefined
+      backendHint.value = undefined
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
-      backendError.value =
-        error instanceof ApiError
-          ? error.message
-          : 'Unerwarteter Fehler beim Laden.'
+      const known = error instanceof ApiError
+      backendError.value = known ? error.message : 'Unerwarteter Fehler beim Laden'
+      backendHint.value = known
+        ? error.hint
+        : 'Der Grund ließ sich nicht bestimmen. Ein erneuter Versuch hilft oft.'
     } finally {
       if (!current.signal.aborted) loading.value = false
     }
@@ -52,5 +55,14 @@ export function useUsage() {
 
   onBeforeUnmount(() => controller?.abort())
 
-  return { usage, health, providers, isDemo, loading, backendError, load }
+  return {
+    usage,
+    health,
+    providers,
+    isDemo,
+    loading,
+    backendError,
+    backendHint,
+    load,
+  }
 }

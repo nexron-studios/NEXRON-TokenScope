@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import AlertBanner from '@/components/AlertBanner.vue'
 import ProviderCard from '@/components/ProviderCard.vue'
 import UsageHistoryChart from '@/components/UsageHistoryChart.vue'
 import type { HistoryResponse, ProviderUsage } from '@/api/types'
@@ -9,15 +10,25 @@ const props = defineProps<{
   history?: HistoryResponse
   historyHours: number
   backendError?: string
+  backendHint?: string
+  loading?: boolean
   largeText: boolean
 }>()
+
+defineEmits<{ retry: [] }>()
 
 const visibleIds = computed(() => props.providers.map((provider) => provider.id))
 </script>
 
 <template>
   <main class="view">
-    <p v-if="backendError" class="alert" role="alert">{{ backendError }}</p>
+    <AlertBanner
+      v-if="backendError"
+      :title="backendError"
+      :hint="backendHint"
+      :busy="loading"
+      @retry="$emit('retry')"
+    />
 
     <div v-if="providers.length" class="cards">
       <ProviderCard
@@ -25,10 +36,13 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
         :key="provider.id"
         :provider="provider"
         :large="largeText"
+        :backend-down="Boolean(backendError)"
       />
     </div>
 
-    <p v-else class="alert muted">
+    <!-- Steht schon ein Banner oben, wäre dieser Hinweis nur ein zweiter
+         Grund für dieselbe leere Fläche. -->
+    <p v-else-if="!backendError" class="empty">
       Kein Anbieter aktiv. In den Einstellungen wieder einschalten.
     </p>
 
@@ -41,9 +55,11 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
 </template>
 
 <style scoped>
+/* Flex statt Grid: Das Banner kommt und geht, der Rumpf soll deshalb nicht
+   in eine andere Zeilenspur rutschen. */
 .view {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
   flex: 1;
   min-height: 0;
@@ -53,23 +69,19 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
   gap: 0.75rem;
+  flex: 1;
   min-height: 0;
 }
 
-.alert {
-  border: 1px solid rgb(208 59 59 / 30%);
-  border-radius: 0.9rem;
-  background: rgb(208 59 59 / 10%);
-  color: #f0a5a5;
-  font-size: 0.8125rem;
-  padding: 0.7rem 0.95rem;
-}
-
-.alert.muted {
+.empty {
   display: grid;
   place-items: center;
-  border-color: rgb(255 255 255 / 8%);
+  flex: 1;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 0.9rem;
   background: rgb(255 255 255 / 2%);
   color: #82828b;
+  font-size: 0.8125rem;
+  padding: 0.7rem 0.95rem;
 }
 </style>

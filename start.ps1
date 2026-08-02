@@ -30,6 +30,7 @@ $root = $PSScriptRoot
 $backend = Join-Path $root 'backend'
 $frontend = Join-Path $root 'frontend'
 $python = Join-Path $backend '.venv\Scripts\python.exe'
+$requirements = Join-Path $backend 'requirements.txt'
 
 function Write-Step($text) {
     Write-Host "==> $text" -ForegroundColor Cyan
@@ -39,8 +40,29 @@ function Write-Step($text) {
 if (-not (Test-Path $python)) {
     Write-Step 'Lege die Python-Umgebung an (einmalig)'
     py -m venv (Join-Path $backend '.venv')
+    if ($LASTEXITCODE -ne 0) { throw 'Python-Umgebung konnte nicht angelegt werden.' }
+
     & $python -m pip install --upgrade pip --quiet
-    & $python -m pip install -r (Join-Path $backend 'requirements.txt') --quiet
+    if ($LASTEXITCODE -ne 0) { throw 'pip konnte nicht aktualisiert werden.' }
+}
+
+# Eine teilweise angelegte oder kopierte venv kann zwar einen Python-Interpreter
+# enthalten, aber trotzdem keine Projektpakete. Darum nicht nur die Existenz des
+# Interpreters pruefen, sondern die benoetigten Laufzeitmodule wirklich importieren.
+& $python -c 'import fastapi, uvicorn, httpx, pydantic, pydantic_settings' 2>$null
+$backendReady = $LASTEXITCODE -eq 0
+
+if (-not $backendReady) {
+    if (-not (Test-Path $requirements)) {
+        throw "Backend-Abhaengigkeiten fehlen und $requirements wurde nicht gefunden."
+    }
+
+    Write-Step 'Installiere oder repariere die Backend-Pakete'
+    & $python -m pip install -r $requirements --quiet
+    if ($LASTEXITCODE -ne 0) { throw 'Backend-Pakete konnten nicht installiert werden.' }
+
+    & $python -c 'import fastapi, uvicorn, httpx, pydantic, pydantic_settings'
+    if ($LASTEXITCODE -ne 0) { throw 'Backend-Pakete sind nach der Installation nicht importierbar.' }
 }
 
 # --- Frontend ---------------------------------------------------------------

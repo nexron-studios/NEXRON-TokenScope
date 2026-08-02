@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ProviderMark from '@/components/ProviderMark.vue'
+import ProviderMascot from '@/components/ProviderMascot.vue'
 import UsageMeter from '@/components/UsageMeter.vue'
 import { useResetCountdown } from '@/composables/useResetCountdown'
 import { brandOf, brandVars, SEVERITY, severityOf } from '@/theme/brands'
 import type { ProviderUsage } from '@/api/types'
 
-const props = defineProps<{ provider: ProviderUsage; large?: boolean }>()
+const props = defineProps<{
+  provider: ProviderUsage
+  large?: boolean
+  /** Das Frontend erreicht sein Backend nicht – der Begleiter zeigt es mit. */
+  backendDown?: boolean
+}>()
 
 const brand = computed(() => brandOf(props.provider.id))
 const vars = computed(() => brandVars(brand.value))
@@ -17,6 +23,15 @@ const primary = computed(
 )
 const secondary = computed(() =>
   props.provider.windows.filter((window) => window !== primary.value),
+)
+
+/**
+ * Alle Fenster in einer Liste, das Hauptfenster zuerst – es steht als große
+ * Zahl direkt darüber. Jedes Fenster bekommt dieselbe Spur, damit sich die
+ * Längen vergleichen lassen; die Betonung des Hauptfensters trägt die Zahl.
+ */
+const meters = computed(() =>
+  primary.value ? [primary.value, ...secondary.value] : [],
 )
 
 const severity = computed(() =>
@@ -111,21 +126,17 @@ const staleMinutes = computed(() => {
         </div>
       </div>
 
-      <UsageMeter
-        class="mt-3"
-        size="lg"
-        :remaining="primary.remaining_percent"
-        :label="primary.label"
-      />
+      <div class="body-row">
+        <div class="meters">
+          <UsageMeter
+            v-for="window in meters"
+            :key="window.key"
+            :remaining="window.remaining_percent"
+            :label="window.label"
+          />
+        </div>
 
-      <div v-if="secondary.length" class="secondary">
-        <UsageMeter
-          v-for="window in secondary"
-          :key="window.key"
-          variant="inline"
-          :remaining="window.remaining_percent"
-          :label="window.label"
-        />
+        <ProviderMascot :provider="provider" :backend-down="backendDown" />
       </div>
     </div>
 
@@ -307,12 +318,21 @@ const staleMinutes = computed(() => {
   height: 0.7rem;
 }
 
-.secondary {
+/* Balken und Begleiter teilen sich eine Zeile: Die Meterspalte ist bei zwei
+   Fenstern ohnehin höher als er, damit kostet er keine zusätzliche Höhe. */
+.body-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.85rem;
+}
+
+/* Alle Limitfenster untereinander, gleiche Breite, gleicher Nullpunkt. */
+.meters {
   display: grid;
-  gap: 0.5rem;
-  margin-top: 0.7rem;
-  border-top: 1px solid var(--brand-hairline);
-  padding-top: 0.65rem;
+  flex: 1;
+  gap: 0.7rem;
+  min-width: 0;
 }
 
 .empty {

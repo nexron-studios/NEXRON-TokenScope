@@ -18,10 +18,21 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    /** Zweite Zeile im Banner: was der Nutzer dagegen tun kann. */
+    readonly hint?: string,
   ) {
     super(message)
     this.name = 'ApiError'
   }
+}
+
+/**
+ * Fließtext für Stellen, die nur eine einzelne Zeile zeigen – dort ginge der
+ * Hinweis sonst verloren. Das Dashboard-Banner setzt beides selbst.
+ */
+export function errorText(caught: unknown, fallback: string): string {
+  if (!(caught instanceof ApiError)) return fallback
+  return caught.hint ? `${caught.message}. ${caught.hint}` : caught.message
 }
 
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -35,18 +46,28 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
     throw new ApiError(
-      'Der lokale Dienst antwortet nicht. Läuft das Backend auf Port 8787?',
+      'Kein Backend erreichbar',
+      undefined,
+      'Der lokale Dienst auf Port 8787 antwortet nicht – mit start.ps1 bzw. start.sh starten.',
     )
   }
 
   if (!response.ok) {
-    throw new ApiError(`Backend meldet HTTP ${response.status}.`, response.status)
+    throw new ApiError(
+      `Backend meldet HTTP ${response.status}`,
+      response.status,
+      'Der Dienst läuft, lehnt die Anfrage aber ab. Details stehen im Backend-Log.',
+    )
   }
 
   try {
     return (await response.json()) as T
   } catch {
-    throw new ApiError('Antwort des Backends war kein gültiges JSON.')
+    throw new ApiError(
+      'Ungültige Antwort vom Backend',
+      undefined,
+      'Es kam kein gültiges JSON zurück. Läuft auf Port 8787 wirklich ai_usage?',
+    )
   }
 }
 

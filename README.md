@@ -273,7 +273,7 @@ Dieselben Angaben liefert `GET /api/health`.
 | *Keine Anmeldedaten gefunden* (`auth_missing`) | Pfad weicht ab, oder die CLI schreibt die Datei gerade neu | Pfad über `AIUSAGE_*_PATH` setzen; bei Token-Refresh löst sich das beim nächsten Poll von allein |
 | *Format hat sich geändert* (`unexpected_shape`) | Der undokumentierte Endpunkt liefert neue Feldnamen | URL prüfen; die JSONL-Auswertung läuft davon unberührt weiter |
 | Verlaufschart bleibt leer | Es gibt noch keine Snapshots | Füllt sich mit jedem Poll; `AIUSAGE_HISTORY_ENABLED=1` prüfen |
-| Frontend meldet *Der lokale Dienst antwortet nicht* | Backend läuft nicht oder auf anderem Port | Backend starten; im Dev-Betrieb `VITE_BACKEND_URL` setzen |
+| Frontend meldet *Kein Backend erreichbar* | Backend läuft nicht oder auf anderem Port | Backend starten; im Dev-Betrieb `VITE_BACKEND_URL` setzen. Der Knopf **Erneut versuchen** im Banner prüft sofort nach |
 
 ## Oberfläche
 
@@ -291,6 +291,70 @@ Die Markenzeichen liegen als PNG unter
 die auf 256 px verkleinerten `*-mark.png`: Die Originale sind 5000 × 5000 px
 groß und würden dekodiert rund 100 MB je Bild belegen – auf einem Pi nicht
 vertretbar. Ersetzt du ein Original, verkleinere es entsprechend mit.
+
+### Der Begleiter
+
+Neben den Balken läuft je Kachel eine kleine Figur: **Clawd** bei Claude,
+**Cloudling** bei Codex. Die Clips liegen in
+[`frontend/src/assets/animations/`](frontend/src/assets/animations/), die
+Zuordnung in [`frontend/src/theme/mascot.ts`](frontend/src/theme/mascot.ts).
+
+Er ist nicht bloß Schmuck. Sieben Situationen führen auf je einen **Topf** von
+Clips – so wiederholt sich in derselben Lage nicht dauernd dasselbe Bild:
+
+| Laune | wann | Clips (Beispiele) |
+| --- | --- | --- |
+| `offline` | Backend weg, Token fehlt/abgelehnt, Endpunkt tot | `error`, `mini-alert` |
+| `throttled` | Anbieter drosselt (`rate_limited`) | `react-annoyed`, `sweeping` |
+| `strained` | Kontingent knapp | `carrying`, `notification` |
+| `working` | Arbeitszeit, Kontingent gesund | `typing`, `building`, `debugger` |
+| `idle` | ruhige Stunden | `idle-reading`, `thinking`, `bubble` |
+| `playful` | ≥ 70 % frei | `happy`, `juggling`, `headphones-groove` |
+| `resting` | Nacht, Nachtmodus, pausiert | `sleeping`, `mini-sleep` |
+
+Die ersten beiden sind **Zwang**: Dort ist der Clip die Anzeige und wechselt
+sofort, ohne die drei Durchläufe abzuwarten. Zwang gilt nur für Störungen, die
+von selbst vergehen – ein knappes Kontingent hält stundenlang an, und ein
+stundenlang festgenagelter Clip liest sich als Fehler statt als Zustand.
+`strained` wirkt deshalb nur als Gewicht (≤ 35 % Gewicht 4, ≤ 15 % Gewicht 12).
+
+Sonst wird nach jedem dritten Durchlauf neu gezogen, gewichtet nach Stunde:
+tiefe Nacht ruht, morgens gemischt, Vormittag und Nachmittag wird gearbeitet,
+mittags und abends mehr Leerlauf. Nachtmodus oder pausierte Aktualisierung
+schieben Richtung `resting`. Die zuletzt gespielte Laune wird auf ein Viertel
+gedämpft, nicht ausgeschlossen: Sobald nur zwei Launen Gewicht haben, ließe
+ein Ausschluss stur abwechseln und die Gewichte wären wirkungslos.
+
+Beide Formate laufen nebeneinander. Ein MP4 meldet sein Ende, wird also genau
+dreimal gespielt – mit 0,35 s Ruhe dazwischen. Ein **GIF trägt seine Schleife
+in der Datei** und meldet weder Dauer noch Ende: Dort steht die Laufzeit in
+Sekunden neben dem Dateinamen in `mascot.ts` (gemessen aus den
+Bildverzögerungen), und die Standzeit wird daraus gerechnet. Eine Ruhepause
+zwischen den Durchläufen ist bei GIFs nicht möglich. **Tauschst du eine Datei,
+passe die Laufzeit mit an.**
+
+Er sitzt mit fester Kantenlänge (5,5 rem) rechts neben der Balkenspalte, nicht
+darunter: Zwei Limitfenster sind ohnehin höher als er, dadurch kostet er keine
+Zeile. Gewechselt wird über **zwei Ebenen, die überblenden** – die neue lädt
+unsichtbar, erst wenn sie bereit ist, wird umgeschaltet. Alle Clips
+gleichzeitig im DOM zu halten wäre einfacher, aber ein verstecktes GIF
+animiert weiter; bei gut zwanzig Clips je Anbieter hätte das den Kiosk
+beschäftigt.
+
+Die MP4s liegen auf schwarzer Fläche und werden per `mix-blend-mode: screen`
+gegen die Kachel gerechnet. Die GIFs sind transparent – dort würde dieselbe
+Rechnung die dunklen Pixel der Figur ausbleichen, deshalb gilt der Blendmodus
+nur für Video. Bei `prefers-reduced-motion` entfällt der Begleiter ganz: Ein
+GIF lässt sich von außen nicht anhalten, ein Standbild ist bei diesem Format
+nicht zu haben.
+
+`import.meta.glob` löst den Ordner zur Bauzeit auf. Ein Eintrag, der auf eine
+gelöschte Datei zeigt, fällt still heraus – der Ordner darf also weiter
+kuratiert werden, ohne dass die Kachel bricht. Umgekehrt landet jede Datei im
+Ordner im Bundle, auch wenn kein Topf sie nennt.
+
+Die Sprites stammen aus [clawd-on-desk](https://github.com/rullerzhou-afk/clawd-on-desk)
+und stehen unter **AGPL-3.0** – siehe [Lizenz](#lizenz).
 
 Die Chartfarben sind bewusst dunklere Schritte derselben Markenfarben – sie
 liegen im OKLCH-Lichtheitsband der dunklen Chartfläche und halten die
@@ -351,12 +415,14 @@ backend/
 frontend/src/
 ├── api/                    Client + Typen des eigenen Backends
 ├── theme/brands.ts         Markentokens, geprüfte Serienfarben
+├── theme/mascot.ts         Clipzuordnung, Tagesrhythmus, gewichtete Ziehung
 ├── composables/            useUsage · useHistory · useSettings · …
-├── components/             ProviderCard · UsageMeter · UsageHistoryChart · Touch-Bedienelemente
+├── components/             ProviderCard · UsageMeter · ProviderMascot · AlertBanner · …
 ├── views/                  Dashboard · Logs · Settings
 └── assets/
     ├── main.css            Grundlayout, Kiosk-Regeln
-    └── logos/              Markenzeichen (Original + 256-px-Fassung)
+    ├── logos/              Markenzeichen (Original + 256-px-Fassung)
+    └── animations/         Clips des Begleiters (320 × 320, ~3,2 s)
 
 docs/screenshots/           Bilder für diese Datei
 ```
@@ -376,4 +442,16 @@ aus den Rollout-Logs und weist ihn als solchen aus.
 
 ## Lizenz
 
-MIT – siehe [LICENSE](LICENSE).
+Der Code steht unter MIT – siehe [LICENSE](LICENSE).
+
+**Nicht der Ordner `frontend/src/assets/animations/`.** Die Clawd- und
+Cloudling-Sprites stammen aus
+[clawd-on-desk](https://github.com/rullerzhou-afk/clawd-on-desk) und stehen
+unter AGPL-3.0. Das ist eine Copyleft-Lizenz und mit MIT nicht ohne Weiteres
+vereinbar: Wer dieses Projekt samt Sprites weitergibt oder über ein Netz
+zugänglich macht, müsste das Ganze unter AGPL-3.0 stellen.
+
+Solange der Monitor auf dem eigenen Panel im eigenen Netz läuft, ist das
+folgenlos. Vor einer Veröffentlichung wären die Möglichkeiten: die Sprites
+herausnehmen, sie durch eigene ersetzen, oder das Projekt selbst auf AGPL-3.0
+umstellen.
