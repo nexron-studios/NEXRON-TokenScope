@@ -169,6 +169,9 @@ sich, sobald der Dienst antwortet. Später baut es nur neu, wenn sich unter
 | `-Dev` / `--dev` | zusätzlich Vite-Dev-Server mit Hot-Reload auf Port 5173 |
 | `-NoBrowser` | Browser nicht automatisch öffnen |
 | `-Port 9000` / `AIUSAGE_PORT=9000` | anderer Port |
+| `-Desktop` (nur `start.ps1`) | statt im Browser im eigenen Fenster im Vollbild |
+| `-Monitor smallest` / `4` / `DISPLAY4` (nur `start.ps1`) | auf welchem Bildschirm das Fenster aufgeht |
+| `-ListMonitors` (nur `start.ps1`) | zeigt die Bildschirme mit ihrer Nummer |
 | `--kiosk` (nur `start.sh`) | Chromium danach im Vollbild starten |
 
 Beenden mit <kbd>Strg</kbd>+<kbd>C</kbd>. Direkteinstieg in eine Ansicht über
@@ -200,6 +203,69 @@ cd frontend && npm install
 npm run build          # dist/ – wird vom Backend ausgeliefert
 npm run dev            # http://127.0.0.1:5173, /api wird auf 8787 geproxyt
 ```
+
+</details>
+
+### Desktop-Fenster auf einem eigenen Bildschirm
+
+Für den Dauerbetrieb auf einem freien Monitor gibt es unter
+[`desktop/`](desktop/) **AI Usage Monitor by NEXRON**, eine schlanke
+[Tauri](https://tauri.app)-Hülle. Sie rendert nichts eigenes: Sie startet bei
+Bedarf das Backend und zeigt dessen Oberfläche im Vollbild an. Damit bleibt
+alles gleichursprünglich – am Frontend musste dafür nichts geändert werden.
+
+```powershell
+.\start.ps1 -Desktop -Monitor smallest
+```
+
+Die Reihenfolge der Bildschirme legt Windows fest, und sie ändert sich beim
+An- und Abstecken. Wer den Monitor fest über seine Nummer wählt, muss die
+Angabe deshalb irgendwann nachziehen. Robuster sind `smallest` bzw. `largest`
+– die kleinste oder größte Fläche – oder ein Stück des Gerätenamens,
+etwa `-Monitor DISPLAY4`. `.\start.ps1 -ListMonitors` zeigt Nummer, Name und
+Auflösung aller Bildschirme.
+
+Ist der Bildschirm einmal gewählt, geht das Fenster dort im Vollbild auf; ohne
+Angabe entscheidet Windows, und du schiebst es selbst hin.
+
+Der erste Lauf baut die Hülle mit `cargo` – das dauert einige Minuten und
+braucht [Rust](https://rustup.rs); die WebView2-Laufzeit bringt Windows 11
+bereits mit. Danach startet das Fenster sofort.
+
+<kbd>F11</kbd> schaltet den Vollbildmodus um, <kbd>Esc</kbd> führt heraus –
+sonst wäre das Fenster ohne Titelleiste eine Sackgasse. Beide Tasten gelten
+nur, solange das Fenster vorn ist. Beenden mit <kbd>Alt</kbd>+<kbd>F4</kbd>,
+das Backend beendet <kbd>Strg</kbd>+<kbd>C</kbd> im Terminal.
+
+Läuft der Dienst schon, hängt sich `-Desktop` einfach an ihn an, statt einen
+zweiten zu starten.
+
+<details>
+<summary>Ohne Skript starten – etwa aus einer Verknüpfung auf dem Desktop</summary>
+
+Eine Verknüpfung auf `ai-usage-desktop.exe` mit dem Argument
+`--monitor smallest` und dem Projektordner als Arbeitsverzeichnis genügt; im
+Autostart-Ordner startet das Ganze mit Windows.
+
+Die gebaute Datei liegt unter
+`desktop\src-tauri\target\release\ai-usage-desktop.exe`. Ohne laufendes Backend
+startet sie es selbst aus der venv des Projekts, wartet auf den Port und zeigt
+so lange einen Splash. Ein selbst gestartetes Backend endet mit dem Fenster –
+auch wenn die App abstürzt oder im Taskmanager abgeschossen wird. Ein Installer
+entsteht mit `npm run build` in [`desktop/`](desktop/).
+
+| Argument | Umgebungsvariable | Wirkung |
+| --- | --- | --- |
+| `--monitor smallest` / `4` / `DISPLAY4` | `AIUSAGE_DESKTOP_MONITOR` | Bildschirm über Fläche, Nummer oder Gerätename |
+| `--port 9000` | `AIUSAGE_PORT` | Port des Backends |
+| `--windowed` | `AIUSAGE_DESKTOP_WINDOWED=1` | normales Fenster statt Vollbild |
+| `--on-top` | `AIUSAGE_DESKTOP_ON_TOP=1` | immer im Vordergrund |
+| `--root <Pfad>` | `AIUSAGE_ROOT` | Projektordner, falls er nicht gefunden wird |
+| `--no-backend` | – | kein eigenes Backend starten, nur verbinden |
+| `--list-monitors` | – | nur die erkannten Bildschirme anzeigen |
+
+Weil das Fenster keine Konsole hat, schreibt es seinen Startverlauf nach
+`%LOCALAPPDATA%\com.nexron.ai-usage-monitor\logs\desktop.log`.
 
 </details>
 

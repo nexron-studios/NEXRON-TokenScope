@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Usage Monitor</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        background: #0f1115;
+        color: #e7e9ee;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      main {
+        width: min(34rem, 90vw);
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 0.2rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      .by {
+        margin: 0 0 1rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #6b7280;
+      }
+      #status {
+        margin: 0;
+        min-height: 1.4em;
+        font-size: 0.9rem;
+        color: #9aa1ae;
+      }
+      .bar {
+        margin: 1.35rem auto 0;
+        width: 12rem;
+        height: 3px;
+        border-radius: 999px;
+        background: #232733;
+        overflow: hidden;
+      }
+      .bar::after {
+        content: "";
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: inherit;
+        background: #d0724a;
+        animation: slide 1.4s ease-in-out infinite;
+      }
+      @keyframes slide {
+        0% {
+          transform: translateX(-110%);
+        }
+        100% {
+          transform: translateX(360%);
+        }
+      }
+      /* Die Monitorliste ist nur im Modus --list-monitors sichtbar. */
+      #monitors:empty {
+        display: none;
+      }
+      #monitors {
+        margin: 1.75rem 0 0;
+        padding: 0;
+        list-style: none;
+        text-align: left;
+        font-size: 0.85rem;
+      }
+      #monitors li {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.45rem 0.7rem;
+        border-radius: 0.4rem;
+        background: #161a22;
+        margin-bottom: 0.35rem;
+      }
+      #monitors li[data-selected="true"] {
+        background: #23303f;
+        box-shadow: inset 0 0 0 1px #3d5a78;
+      }
+      #monitors .idx {
+        color: #d0724a;
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+      }
+      #monitors .meta {
+        color: #9aa1ae;
+        margin-left: auto;
+        font-variant-numeric: tabular-nums;
+      }
+      .hint {
+        margin: 1.25rem 0 0;
+        font-size: 0.78rem;
+        color: #6b7280;
+      }
+      .hint:empty {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>AI Usage Monitor</h1>
+      <p class="by">by Nexron</p>
+      <p id="status">Startet …</p>
+      <div class="bar" id="bar"></div>
+      <ul id="monitors"></ul>
+      <p class="hint" id="hint"></p>
+    </main>
+    <script>
+      // Beide Funktionen ruft die Rust-Seite per eval auf.
+      window.__setStatus = function (text) {
+        document.getElementById('status').textContent = text
+      }
+
+      window.__setHint = function (text) {
+        document.getElementById('hint').textContent = text
+      }
+
+      window.__showMonitors = function (monitors, selected) {
+        const list = document.getElementById('monitors')
+        list.innerHTML = ''
+        for (const m of monitors) {
+          const li = document.createElement('li')
+          li.dataset.selected = String(m.index === selected)
+          li.innerHTML =
+            '<span class="idx">' +
+            m.index +
+            '</span><span class="name"></span><span class="meta"></span>'
+          li.querySelector('.name').textContent = m.name
+          li.querySelector('.meta').textContent =
+            m.width + '×' + m.height + '  @ ' + m.x + ',' + m.y
+          list.appendChild(li)
+        }
+        document.getElementById('bar').style.display = 'none'
+      }
+    </script>
+  </body>
+</html>

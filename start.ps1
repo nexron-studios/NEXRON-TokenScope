@@ -13,14 +13,32 @@
 .PARAMETER NoBrowser
     Öffnet den Browser nicht automatisch.
 
+.PARAMETER Desktop
+    Zeigt die Oberfläche statt im Browser in der Tauri-Hülle an – im Vollbild
+    und auf Wunsch auf einem bestimmten Bildschirm.
+
+.PARAMETER Monitor
+    Bildschirm für -Desktop: "smallest" oder "largest" nach Flaeche, die
+    1-basierte Nummer, oder ein Stueck des Geraetenamens wie DISPLAY4. Die
+    Nummer verschiebt sich beim An- und Abstecken, die anderen beiden nicht.
+    Alle drei Angaben zeigt -ListMonitors.
+
+.PARAMETER ListMonitors
+    Zeigt nur die erkannten Bildschirme mit ihrer Nummer an.
+
 .EXAMPLE
     .\start.ps1
     .\start.ps1 -Dev
+    .\start.ps1 -Desktop -Monitor smallest
+    .\start.ps1 -ListMonitors
 #>
 [CmdletBinding()]
 param(
     [switch]$Dev,
     [switch]$NoBrowser,
+    [switch]$Desktop,
+    [string]$Monitor = '',
+    [switch]$ListMonitors,
     [int]$Port = 8787
 )
 
@@ -32,8 +50,41 @@ $frontend = Join-Path $root 'frontend'
 $python = Join-Path $backend '.venv\Scripts\python.exe'
 $requirements = Join-Path $backend 'requirements.txt'
 
+$desktopSrc = Join-Path $root 'desktop\src-tauri'
+$desktopExe = Join-Path $desktopSrc 'target\release\ai-usage-desktop.exe'
+
 function Write-Step($text) {
     Write-Host "==> $text" -ForegroundColor Cyan
+}
+
+# Die Huelle wird nur bei Bedarf gebaut - der erste cargo-Lauf dauert Minuten.
+function Confirm-DesktopApp {
+    if (Test-Path $desktopExe) { return }
+
+    if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+        throw 'Fuer die Desktop-Huelle wird Rust benoetigt: https://rustup.rs'
+    }
+
+    Write-Step 'Baue die Desktop-Huelle (einmalig, dauert einige Minuten)'
+    Push-Location $desktopSrc
+    try {
+        cargo build --release
+        if ($LASTEXITCODE -ne 0) { throw 'Die Desktop-Huelle konnte nicht gebaut werden.' }
+    } finally { Pop-Location }
+}
+
+function Get-DesktopArgs([int]$TargetPort) {
+    $list = @('--port', "$TargetPort")
+    if ($Monitor) { $list += @('--monitor', $Monitor) }
+    # Das Backend startet dieses Skript selbst; die Huelle wartet nur darauf.
+    $list + '--no-backend'
+}
+
+# --- Nur die Bildschirme auflisten ------------------------------------------
+if ($ListMonitors) {
+    Confirm-DesktopApp
+    Start-Process -FilePath $desktopExe -ArgumentList '--list-monitors' -Wait
+    exit 0
 }
 
 # --- Backend-Umgebung -------------------------------------------------------
@@ -90,10 +141,18 @@ if ($needsBuild) {
     try { npm.cmd run build } finally { Pop-Location }
 }
 
+if ($Desktop) { Confirm-DesktopApp }
+
 # --- Start ------------------------------------------------------------------
 # Ein bereits laufender Dienst wuerde sonst nur eine kryptische Socket-Meldung
 # aus uvicorn produzieren.
 $busy = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+if ($busy -and $Desktop) {
+    # Kein Grund abzubrechen: Das Fenster haengt sich einfach an den laufenden Dienst.
+    Write-Step "Backend laeuft bereits auf Port $Port - oeffne nur das Fenster"
+    Start-Process -FilePath $desktopExe -ArgumentList (Get-DesktopArgs $Port)
+    exit 0
+}
 if ($busy) {
     Write-Host "Port $Port ist bereits belegt (PID $($busy[0].OwningProcess))." -ForegroundColor Yellow
     Write-Host "Laeuft der Dienst schon? -> http://127.0.0.1:$Port/" -ForegroundColor Yellow
@@ -110,7 +169,16 @@ if ($Dev) {
         -WorkingDirectory $frontend -PassThru
 }
 
-if (-not $NoBrowser) {
+$desktopApp = $null
+if ($Desktop) {
+    Write-Step 'Starte das Desktop-Fenster'
+    # Mit -Dev zeigt das Fenster den Vite-Server, damit auch dort neu geladen wird.
+    # Bis der Port antwortet, zeigt die Huelle einen Splash.
+    $desktopPort = if ($Dev) { 5173 } else { $Port }
+    $desktopApp = Start-Process -FilePath $desktopExe -ArgumentList (Get-DesktopArgs $desktopPort) -PassThru
+}
+
+if (-not $NoBrowser -and -not $Desktop) {
     # Erst oeffnen, wenn das Backend antwortet - sonst zeigt der Browser einen Fehler.
     Start-Job -ScriptBlock {
         param($target, $probe)
@@ -133,9 +201,12 @@ try {
     & $python -m uvicorn app.main:app --host 127.0.0.1 --port $Port
 } finally {
     Pop-Location
-    # Den Dev-Server nicht verwaist zuruecklassen.
+    # Weder Dev-Server noch Fenster verwaist zuruecklassen.
     if ($vite -and -not $vite.HasExited) {
         Stop-Process -Id $vite.Id -Force -ErrorAction SilentlyContinue
+    }
+    if ($desktopApp -and -not $desktopApp.HasExited) {
+        Stop-Process -Id $desktopApp.Id -Force -ErrorAction SilentlyContinue
     }
     Get-Job | Remove-Job -Force -ErrorAction SilentlyContinue
 }

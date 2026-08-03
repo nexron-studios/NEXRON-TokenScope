@@ -6,6 +6,10 @@ build/
 tmp/
 .npm-cache
 
+# Tauri (Desktop-Huelle)
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+
 # Python
 __pycache__/
 *.py[cod]

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Der Splash zeigt nur Text an und ruft keine Tauri-Befehle auf.",
+  "windows": ["splash"],
+  "permissions": []
+}

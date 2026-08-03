@@ -92,8 +92,10 @@ const totalOf = (totals: {
         Für diesen Zeitraum liegen keine Sitzungen vor.
       </p>
 
+      <!-- Alle Gruppen, nicht nur die ersten paar: auf einem grossen Schirm
+           ist der Platz da, und der Rest ist erscrollbar. -->
       <ul v-else-if="summary" class="rows">
-        <li v-for="bucket in summary.buckets.slice(0, 12)" :key="`${bucket.provider}-${bucket.key}`">
+        <li v-for="bucket in summary.buckets" :key="`${bucket.provider}-${bucket.key}`">
           <div class="row-head">
             <span class="row-name">
               <span class="swatch" :style="{ background: brandOf(bucket.provider).series }" />
@@ -175,10 +177,14 @@ const totalOf = (totals: {
 
 .rows {
   display: grid;
+  align-content: start;
   gap: 0.6rem;
+  /* Die Liste bekommt den Rest der Panel-Hoehe und scrollt in sich. */
+  flex: 1;
   overflow-y: auto;
   min-height: 0;
   padding-right: 0.2rem;
+  overscroll-behavior: contain;
 }
 
 .row-head {
