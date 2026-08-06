@@ -42,6 +42,12 @@ lerna-debug.log*
 .temp
 .tmp
 
+# After Effects legt beim Rendern Zwischendateien neben die Ausgabe -
+# 0 Byte gross, benannt nach Prozess-ID. Eine davon ist schon einmal
+# im Repo gelandet.
+*.[0-9]*.[0-9]*.m4v
+
+
 # Local editor and OS files
 .DS_Store
 *.local

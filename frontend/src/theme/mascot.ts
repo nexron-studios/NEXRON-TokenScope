@@ -117,7 +117,7 @@ const CLAWD: Record<Mood, readonly Entry[]> = {
   working: [
     ['clawd-typing.mp4', 1.43],
     ['clawd-building.mp4', 0.97],
-    ['clawd-debugger.mp4', 2.93],
+    ['clawd-debugger.mp4', 2.8],
     ['clawd-conducting.mp4', 1.93],
     ['clawd-working-beacon.mp4', 1.93],
     ['clawd-working-wizard.mp4', 2.87],
@@ -125,21 +125,23 @@ const CLAWD: Record<Mood, readonly Entry[]> = {
     ['clawd_coding.mp4', 3.2],
   ],
   idle: [
-    ['clawd-idle.gif', 3.19],
+    ['clawd-idle.mp4', 3.23],
     ['clawd-idle-reading.mp4', 3.97],
     ['clawd-idle-living.mp4', 15.6],
-    ['clawd-thinking.gif', 3.84],
+    ['clawd-thinking.mp4', 3.83],
     ['clawd-bubble.mp4', 3.23],
     ['clawd-mini-idle.gif', 4.99],
     ['clawd-mini-peek.gif', 3.47],
-    ['clawd-static-base.gif', 0.99],
+    // Noch nicht gerendert: Der Eintrag faellt bis dahin still heraus.
+    ['clawd-static-base.mp4', 0.99],
   ],
   playful: [
     ['clawd-happy.mp4', 1.93],
     ['clawd-mini-happy.gif', 2.99],
     ['clawd-juggling.mp4', 1.13],
     ['clawd-headphones-groove.mp4', 3.17],
-    ['clawd-react-double-jump.gif', 3.47],
+    // Noch nicht gerendert, siehe oben.
+    ['clawd-react-double-jump.mp4', 3.47],
     ['clawd-crab-walking.mp4', 3.83],
     ['clawd-mini-clawd.mp4', 3.83],
     ['clawd-mini-crabwalk.gif', 2.99],
@@ -153,42 +155,45 @@ const CLAWD: Record<Mood, readonly Entry[]> = {
   ],
 }
 
-/** Codex: die Cloudling-Sprites. */
+/**
+ * Codex: die Cloudling-Sprites, ebenfalls als skalierte MP4s. Einzige
+ * Ausnahme ist `mini-sleep` – dafuer steht die neue Fassung noch aus.
+ */
 const CLOUDLING: Record<Mood, readonly Entry[]> = {
   offline: [
-    ['cloudling-error.gif', 4.99],
-    ['cloudling-mini-alert.gif', 2.59],
-    ['cloudling-attention.gif', 3.59],
+    ['cloudling-error.mp4', 4.97],
+    ['cloudling-mini-alert.mp4', 2.57],
+    ['cloudling-attention.mp4', 3.53],
   ],
   throttled: [
-    ['cloudling-sweeping.gif', 5.47],
-    ['cloudling-mini-crabwalk.gif', 2.99],
+    ['cloudling-sweeping.mp4', 5.47],
+    ['cloudling-mini-crabwalk.mp4', 2.93],
   ],
   strained: [
-    ['cloudling-carrying.gif', 2.99],
-    ['cloudling-sweeping.gif', 5.47],
-    ['cloudling-notification.gif', 2.59],
+    ['cloudling-carrying.mp4', 2.93],
+    ['cloudling-sweeping.mp4', 5.47],
+    ['cloudling-notification.mp4', 2.57],
   ],
   working: [
-    ['cloudling-typing.gif', 2.99],
-    ['cloudling-building.gif', 2.99],
-    ['cloudling-mini-working.gif', 2.99],
-    ['cloudling-conducting.gif', 2.99],
+    ['cloudling-typing.mp4', 2.93],
+    ['cloudling-building.mp4', 2.93],
+    ['cloudling-mini-working.mp4', 2.93],
+    ['cloudling-conducting.mp4', 2.93],
   ],
   idle: [
-    ['cloudling-idle.gif', 3.19],
-    ['cloudling-idle-reading.gif', 4.99],
-    ['cloudling-thinking.gif', 2.99],
-    ['cloudling-mini-idle.gif', 4.99],
-    ['cloudling-mini-peek.gif', 1.47],
+    ['cloudling-idle.mp4', 3.17],
+    ['cloudling-idle-reading.mp4', 4.97],
+    ['cloudling-thinking.mp4', 2.93],
+    ['cloudling-mini-idle.mp4', 4.97],
+    ['cloudling-mini-peek.mp4', 2.93],
   ],
   playful: [
-    ['cloudling-mini-happy.gif', 3.59],
-    ['cloudling-juggling.gif', 2.99],
-    ['cloudling-mini-crabwalk.gif', 2.99],
+    ['cloudling-mini-happy.mp4', 3.53],
+    ['cloudling-juggling.mp4', 2.93],
+    ['cloudling-mini-crabwalk.mp4', 2.93],
   ],
   resting: [
-    ['cloudling-sleeping.gif', 2.99],
+    ['cloudling-sleeping.mp4', 2.93],
     ['cloudling-mini-sleep.gif', 2.99],
   ],
 }
