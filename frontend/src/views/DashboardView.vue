@@ -80,7 +80,7 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 0.9rem;
   background: rgb(255 255 255 / 2%);
-  color: #82828b;
+  color: #bcbcc5;
   font-size: 0.8125rem;
   padding: 0.7rem 0.95rem;
 }

@@ -145,7 +145,7 @@ const shellClass = computed(() => ({
   justify-content: space-between;
   gap: 1rem;
   flex-shrink: 0;
-  color: #62626b;
+  color: #a4a4ae;
   font-size: 0.6875rem;
   padding: 0 0.15rem;
 }

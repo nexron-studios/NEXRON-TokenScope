@@ -86,63 +86,68 @@ function reelOf(
   return reel
 }
 
-/** Claude: die Clawd-Sprites plus die selbst gebauten MP4s. */
+/**
+ * Claude: die Clawd-Sprites plus die selbst gebauten MP4s. Die grossen
+ * Auftritte liegen inzwischen als MP4 vor – dort ist die Figur ins Bild
+ * skaliert, statt verloren in einer zu weiten Flaeche zu sitzen. Als GIF
+ * bleibt nur, wofuer es keine neue Fassung gibt.
+ */
 const CLAWD: Record<Mood, readonly Entry[]> = {
   offline: [
-    ['clawd-error.gif', 2.99],
-    ['clawd-disconnected.gif', 5.76],
+    ['clawd-error.mp4', 2.93],
+    ['clawd-disconnected.mp4', 5.77],
     ['clawd-mini-alert.gif', 4.47],
     ['clawd_apidown.mp4', 3.2],
   ],
   throttled: [
-    ['clawd-dizzy.gif', 3.84],
-    ['clawd-react-annoyed.gif', 3.47],
-    ['clawd-sweeping.gif', 1.44],
+    ['clawd-dizzy.mp4', 3.83],
+    ['clawd-react-annoyed.mp4', 3.43],
+    ['clawd-sweeping.mp4', 1.43],
     ['clawd_coffee.mp4', 3.2],
   ],
   strained: [
-    ['clawd-carrying.gif', 1.92],
-    ['clawd-sweeping.gif', 1.44],
-    ['clawd-notification.gif', 3.87],
-    ['clawd-working-confused.gif', 5.87],
-    ['clawd-working-overheated.gif', 2.88],
-    ['clawd-working-pushing.gif', 1.92],
+    ['clawd-carrying.mp4', 1.93],
+    ['clawd-sweeping.mp4', 1.43],
+    ['clawd-notification.mp4', 3.83],
+    ['clawd-working-confused.mp4', 5.77],
+    ['clawd-working-overheated.mp4', 2.87],
+    ['clawd-working-pushing.mp4', 1.93],
     ['clawd_coffee.mp4', 3.2],
   ],
   working: [
-    ['clawd-typing.gif', 1.44],
-    ['clawd-building.gif', 0.96],
-    ['clawd-debugger.gif', 2.88],
-    ['clawd-conducting.gif', 1.92],
-    ['clawd-working-beacon.gif', 1.92],
-    ['clawd-working-wizard.gif', 2.88],
-    ['mini-crab-typing.gif', 35],
+    ['clawd-typing.mp4', 1.43],
+    ['clawd-building.mp4', 0.97],
+    ['clawd-debugger.mp4', 2.93],
+    ['clawd-conducting.mp4', 1.93],
+    ['clawd-working-beacon.mp4', 1.93],
+    ['clawd-working-wizard.mp4', 2.87],
+    ['mini-crab-typing.mp4', 3.9],
     ['clawd_coding.mp4', 3.2],
   ],
   idle: [
     ['clawd-idle.gif', 3.19],
-    ['clawd-idle-reading.gif', 3.99],
-    ['clawd-idle-living.gif', 15.6],
+    ['clawd-idle-reading.mp4', 3.97],
+    ['clawd-idle-living.mp4', 15.6],
     ['clawd-thinking.gif', 3.84],
-    ['clawd-bubble.gif', 4.47],
+    ['clawd-bubble.mp4', 3.23],
     ['clawd-mini-idle.gif', 4.99],
     ['clawd-mini-peek.gif', 3.47],
     ['clawd-static-base.gif', 0.99],
   ],
   playful: [
-    ['clawd-happy.gif', 1.92],
+    ['clawd-happy.mp4', 1.93],
     ['clawd-mini-happy.gif', 2.99],
-    ['clawd-juggling.gif', 1.12],
-    ['clawd-headphones-groove.gif', 3.19],
+    ['clawd-juggling.mp4', 1.13],
+    ['clawd-headphones-groove.mp4', 3.17],
     ['clawd-react-double-jump.gif', 3.47],
-    ['clawd-crab-walking.gif', 3.84],
-    ['clawd-mini-clawd.gif', 3.84],
+    ['clawd-crab-walking.mp4', 3.83],
+    ['clawd-mini-clawd.mp4', 3.83],
     ['clawd-mini-crabwalk.gif', 2.99],
     ['clawd-mini-enter.gif', 3.47],
   ],
   resting: [
-    ['clawd-sleeping.gif', 5.76],
-    ['clawd-going-away.gif', 2.93],
+    ['clawd-sleeping.mp4', 5.77],
+    ['clawd-going-away.mp4', 2.8],
     ['clawd-mini-idle.gif', 4.99],
     ['clawd_sleep.mp4', 3.2],
   ],

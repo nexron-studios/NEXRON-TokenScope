@@ -160,12 +160,12 @@ const totalOf = (totals: {
 
 .panel-title {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .panel-sub,
 .meta {
-  color: #7d7d86;
+  color: #b8b8c1;
   font-size: 0.6875rem;
 }
 
@@ -198,9 +198,9 @@ const totalOf = (totals: {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: #e4e4e9;
+  color: #f4f4f6;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -215,7 +215,7 @@ const totalOf = (totals: {
 }
 
 .row-value {
-  color: #e4e4e9;
+  color: #f4f4f6;
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
 }
@@ -236,18 +236,18 @@ const totalOf = (totals: {
 
 .row-meta {
   margin-top: 0.22rem;
-  color: #75757e;
+  color: #b2b2bb;
   font-size: 0.6875rem;
 }
 
 .state {
-  color: #82828b;
+  color: #bcbcc5;
   font-size: 0.8125rem;
   padding: 1.5rem 0;
   text-align: center;
 }
 
 .state.error {
-  color: #f0a5a5;
+  color: #f8c8c8;
 }
 </style>

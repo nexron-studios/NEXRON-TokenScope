@@ -55,11 +55,11 @@ defineProps<{ label: string; hint?: string }>()
 
 .label {
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .hint {
-  color: #7f7f88;
+  color: #bababf;
   font-size: 0.75rem;
   line-height: 1.25;
 }

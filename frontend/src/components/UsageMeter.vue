@@ -66,7 +66,7 @@ const fill = computed(() =>
   overflow: hidden;
   color: var(--brand-ink-muted);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;

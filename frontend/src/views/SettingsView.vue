@@ -232,7 +232,7 @@ const lastPoll = computed(() => {
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 0.9rem;
   background: rgb(255 255 255 / 3%);
-  color: #9a9aa3;
+  color: #ccccd3;
   padding: 0.55rem 0.85rem;
   text-align: left;
   touch-action: manipulation;
@@ -251,16 +251,16 @@ const lastPoll = computed(() => {
 
 .rail-item.reset.armed {
   background: rgb(208 59 59 / 14%);
-  color: #f0a5a5;
+  color: #f8c8c8;
 }
 
 .rail-label {
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .rail-hint {
-  color: #75757e;
+  color: #b2b2bb;
   font-size: 0.6875rem;
 }
 
@@ -284,9 +284,9 @@ const lastPoll = computed(() => {
 }
 
 .caption {
-  color: #82828b;
+  color: #bcbcc5;
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -299,13 +299,13 @@ const lastPoll = computed(() => {
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 0.9rem;
   background: rgb(255 255 255 / 3%);
-  color: #e4e4e9;
+  color: #f4f4f6;
   padding: 0 0.9rem;
   touch-action: manipulation;
 }
 
 .provider.off {
-  color: #6e6e77;
+  color: #acacb6;
 }
 
 .provider.off .chip {
@@ -318,12 +318,12 @@ const lastPoll = computed(() => {
 
 .provider-name {
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .provider-state {
   margin-left: auto;
-  color: #7f7f88;
+  color: #bababf;
   font-size: 0.75rem;
 }
 
@@ -338,7 +338,7 @@ const lastPoll = computed(() => {
   gap: 0.5rem;
   border: 1px solid rgb(255 255 255 / 7%);
   border-radius: 0.7rem;
-  color: #d5d5db;
+  color: #ececef;
   font-size: 0.8125rem;
   padding: 0.55rem 0.75rem;
 }
@@ -360,7 +360,7 @@ const lastPoll = computed(() => {
 
 .source-state {
   margin-left: auto;
-  color: #7f7f88;
+  color: #bababf;
   font-size: 0.75rem;
 }
 
@@ -379,18 +379,18 @@ const lastPoll = computed(() => {
 }
 
 .facts dt {
-  color: #82828b;
+  color: #bcbcc5;
   font-size: 0.75rem;
 }
 
 .facts dd {
-  color: #e4e4e9;
+  color: #f4f4f6;
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
 }
 
 .note {
-  color: #75757e;
+  color: #b2b2bb;
   font-size: 0.75rem;
   line-height: 1.4;
 }

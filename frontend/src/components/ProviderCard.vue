@@ -215,7 +215,7 @@ const staleMinutes = computed(() => {
 .wordmark {
   font-family: var(--brand-display);
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
@@ -232,7 +232,7 @@ const staleMinutes = computed(() => {
   border-radius: 999px;
   color: var(--brand-ink-muted);
   font-size: 0.625rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.08em;
   padding: 0.25rem 0.55rem;
   text-transform: uppercase;
@@ -260,7 +260,7 @@ const staleMinutes = computed(() => {
 .eyebrow {
   color: var(--brand-ink-subtle);
   font-size: 0.625rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.11em;
   text-transform: uppercase;
 }
@@ -268,7 +268,7 @@ const staleMinutes = computed(() => {
 .figure {
   margin-top: 0.05rem;
   font-size: 2.9rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.045em;
   line-height: 1;
 }
@@ -281,7 +281,7 @@ const staleMinutes = computed(() => {
   margin-left: 0.15rem;
   color: var(--brand-ink-subtle);
   font-size: 1.15rem;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -289,7 +289,7 @@ const staleMinutes = computed(() => {
   margin-top: 0.15rem;
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .footnote,
@@ -310,7 +310,7 @@ const staleMinutes = computed(() => {
   gap: 0.3rem;
   color: var(--brand-ink-muted);
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .state-icon {
@@ -343,7 +343,7 @@ const staleMinutes = computed(() => {
 
 .empty-title {
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .empty-text {

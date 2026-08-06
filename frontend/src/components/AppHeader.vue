@@ -93,7 +93,7 @@ const TABS: Array<{ id: ViewId; label: string }> = [
 .clock {
   font-size: 1.35rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
@@ -107,9 +107,9 @@ const TABS: Array<{ id: ViewId; label: string }> = [
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  color: #8b8b94;
+  color: #c2c2ca;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .dot {
@@ -132,7 +132,7 @@ const TABS: Array<{ id: ViewId; label: string }> = [
   border-radius: 999px;
   color: #fab219;
   font-size: 0.625rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.09em;
   padding: 0.15rem 0.5rem;
   text-transform: uppercase;
@@ -152,9 +152,9 @@ const TABS: Array<{ id: ViewId; label: string }> = [
   border: 0;
   border-radius: 0.65rem;
   background: transparent;
-  color: #9a9aa3;
+  color: #ccccd3;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 0 0.95rem;
   touch-action: manipulation;
   transition: background 140ms ease, color 140ms ease;

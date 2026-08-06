@@ -34,9 +34,9 @@ const model = defineModel<number | string>({ required: true })
 <style scoped>
 .caption {
   margin-bottom: 0.4rem;
-  color: #82828b;
+  color: #bcbcc5;
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -57,9 +57,9 @@ const model = defineModel<number | string>({ required: true })
   border: 0;
   border-radius: 0.65rem;
   background: transparent;
-  color: #9a9aa3;
+  color: #ccccd3;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   touch-action: manipulation;
   transition: background 140ms ease, color 140ms ease;
 }

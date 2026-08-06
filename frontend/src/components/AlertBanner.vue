@@ -63,7 +63,7 @@ defineEmits<{ retry: [] }>()
   border: 1px solid rgb(208 59 59 / 30%);
   border-radius: 0.7rem;
   background: rgb(208 59 59 / 14%);
-  color: #e8756f;
+  color: #f29a95;
 }
 
 .icon svg {
@@ -77,9 +77,9 @@ defineEmits<{ retry: [] }>()
 }
 
 .title {
-  color: #f3cdcd;
+  color: #fbe3e3;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -87,7 +87,7 @@ defineEmits<{ retry: [] }>()
 .hint {
   margin-top: 0.1rem;
   overflow: hidden;
-  color: #a98b8b;
+  color: #d2b8b8;
   font-size: 0.6875rem;
   line-height: 1.3;
   text-overflow: ellipsis;
@@ -100,9 +100,9 @@ defineEmits<{ retry: [] }>()
   border: 1px solid rgb(208 59 59 / 34%);
   border-radius: 0.7rem;
   background: rgb(208 59 59 / 12%);
-  color: #f0a5a5;
+  color: #f8c8c8;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 0 0.85rem;
   touch-action: manipulation;
   transition: background 140ms ease;

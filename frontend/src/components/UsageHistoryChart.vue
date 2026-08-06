@@ -322,12 +322,12 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
 
 .panel-title {
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .panel-sub {
   margin-top: 0.1rem;
-  color: #7d7d86;
+  color: #b8b8c1;
   font-size: 0.6875rem;
 }
 
@@ -335,7 +335,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  color: #b6b6bd;
+  color: #dadade;
   font-size: 0.6875rem;
 }
 
@@ -377,7 +377,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
 
 .direct-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .tooltip {
@@ -393,7 +393,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
 }
 
 .tooltip-time {
-  color: #8b8b93;
+  color: #c2c2ca;
   font-size: 0.625rem;
 }
 
@@ -401,7 +401,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: #e8e8ec;
+  color: #f6f6f8;
   font-size: 0.75rem;
 }
 
@@ -410,7 +410,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
 }
 
 .empty {
-  color: #75757e;
+  color: #b2b2bb;
   font-size: 0.75rem;
   line-height: 1.5;
   padding: 1.6rem 0 1.8rem;

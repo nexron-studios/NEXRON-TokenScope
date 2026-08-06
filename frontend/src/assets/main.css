@@ -5,13 +5,29 @@
   --color-shell-950: #0c0c0f;
   --color-shell-900: #111114;
   --color-shell-800: #16161a;
+
+  /* Der Kiosk wird aus zwei Metern Abstand gelesen, nicht am Schreibtisch.
+     Darum liegt die ganze Gewichtsleiter hoeher als ueblich – auch die
+     Tailwind-Klassen greifen auf diese Werte zu, nicht auf die Standards. */
+  --font-weight-thin: 500;
+  --font-weight-extralight: 500;
+  --font-weight-light: 600;
+  --font-weight-normal: 700;
+  --font-weight-medium: 700;
+  --font-weight-semibold: 800;
+  --font-weight-bold: 800;
+  --font-weight-extrabold: 900;
+  --font-weight-black: 900;
 }
 
 :root {
-  color: #ececf1;
+  color: #f8f8fb;
   background: #0c0c0f;
   font-family: var(--font-sans);
-  font-synthesis: none;
+  /* Fetter Schnitt darf notfalls gerechnet werden: Ohne das faellt Text in
+     Familien ohne eigenen Bold-Schnitt auf die magere Fassung zurueck. */
+  font-synthesis: weight;
+  font-weight: 700;
   text-rendering: optimizeLegibility;
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
