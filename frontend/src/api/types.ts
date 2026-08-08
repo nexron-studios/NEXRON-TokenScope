@@ -81,6 +81,27 @@ export interface LogBucket {
   totals: TokenTotals
 }
 
+/** Eine Zelle des Wochenrasters: Wochentag (0 = Montag) × Stunde. */
+export interface ActivityCell {
+  weekday: number
+  hour: number
+  messages: number
+  tokens: number
+}
+
+export interface LogInsights {
+  sessions: number
+  messages: number
+  active_days: number
+  current_streak: number
+  longest_streak: number
+  peak_hour: number | null
+  top_model: string | null
+  top_model_messages: number
+  /** Nur belegte Zellen – das Raster wird in der Oberfläche aufgefüllt. */
+  activity: ActivityCell[]
+}
+
 export interface LogSummary {
   since: string
   days: number
@@ -89,6 +110,7 @@ export interface LogSummary {
   skipped_lines: number
   totals: TokenTotals
   buckets: LogBucket[]
+  insights: LogInsights
 }
 
 export interface HealthResponse {

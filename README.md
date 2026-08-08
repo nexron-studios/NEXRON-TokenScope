@@ -23,6 +23,14 @@ OAuth-Usage-Endpunkte      ~/.claude/projects/**.jsonl      ~/.codex/sessions/**
 (Restkontingent, Reset)    (Verbrauch je Projekt/Modell)    (Verbrauch + rate_limits)
 ```
 
+**Schnellstart** – Voraussetzungen und Details unter [Loslegen](#loslegen):
+
+```bash
+git clone https://github.com/addictedsociety/ai_usage.git
+cd ai_usage
+./start.sh        # Windows: .\start.ps1
+```
+
 ## Woher die Daten kommen
 
 | Frage | Quelle | Robustheit |
@@ -107,6 +115,20 @@ genau eine Kachel, nie das ganze Dashboard. Der `status` sagt, warum
 `unreachable`, `unexpected_shape`), der `source`, woher der Wert stammt
 (`api`, `logs`, `cli`, `demo`).
 
+### Welche Fenster angezeigt werden
+
+Der Claude-Endpunkt liefert neben den echten Limits gelegentlich Buckets unter
+internen Codenamen – etwa `nimbus_quill` –, die weder Fenstergröße noch Reset
+melden. Angezeigt werden deshalb nur die benannten Fenster (`five_hour`,
+`seven_day` und dessen Varianten, siehe `_DISPLAY_KEYS` in
+`providers/claude_api.py`).
+
+Der Filter greift aber nur, **solange danach etwas übrig bleibt**. Benennt der
+Anbieter eines Tages `five_hour` um, würde eine harte Liste alle Fenster
+verschlucken und die Kachel liefe in den Leerzustand. Stattdessen fällt sie auf
+die Rohfenster zurück – dann stehen wieder Codenamen in der Oberfläche, und das
+ist genau das gewünschte Signal, dass sich das Format geändert hat.
+
 ### Aussetzer überbrücken
 
 Ein einzelner fehlgeschlagener Poll leert keine Kachel. Der Dienst behält den
@@ -141,21 +163,43 @@ verlängert eine Drosselung nur.
 | --- | --- |
 | `GET /api/usage` | aktueller Cache; `?refresh=true` erzwingt einen Poll |
 | `GET /api/history?hours=24[&provider=]` | Snapshot-Verlauf aus SQLite |
-| `GET /api/logs/summary?days=7&group_by=day\|project\|model\|provider` | Auswertung der JSONL-Logs |
+| `GET /api/logs/summary?days=7&group_by=day\|project\|model\|provider` | Auswertung der JSONL-Logs samt Kennzahlen (`insights`) |
 | `GET /api/health` | Diagnose: gefundene Quellen, letzter Poll, Bindung |
 
 Interaktive Doku: <http://127.0.0.1:8787/docs>
 
-## Start
+## Loslegen
 
-Voraussetzungen: Python 3.10+ und Node.js 22+. Ein Befehl, mehr nicht:
+### Was du brauchst
+
+| Voraussetzung | wofür |
+| --- | --- |
+| **Python 3.10+** | Backend |
+| **Node.js 22+** | Frontend-Build |
+| **Git** | zum Klonen |
+| **Claude Code** und/oder **Codex CLI**, jeweils **angemeldet** | die Datenquelle |
+
+Der Monitor erfindet nichts und meldet sich nirgends an: Er liest die
+Anmeldedaten und Sitzungslogs, die die CLIs ohnehin auf der Platte ablegen.
+Ohne mindestens eine angemeldete CLI bleiben die Kacheln deshalb leer – zum
+Ansehen gibt es den [Demo-Modus](#nur-ansehen-ohne-anmeldedaten). Beide
+Anbieter sind optional; wer nur eine CLI nutzt, schaltet die andere über
+`AIUSAGE_CODEX_ENABLED=0` bzw. `AIUSAGE_CLAUDE_ENABLED=0` ab.
+
+### Holen und starten
+
+```bash
+git clone https://github.com/addictedsociety/ai_usage.git
+cd ai_usage
+```
 
 ```powershell
-.\start.ps1
+.\start.ps1          # Windows
 ```
 
 ```bash
-./start.sh
+chmod +x start.sh    # einmalig, falls das Ausführungsrecht fehlt
+./start.sh           # Linux / macOS / Raspberry Pi
 ```
 
 Das Skript richtet beim ersten Lauf alles selbst ein – virtuelle Umgebung,
@@ -176,6 +220,34 @@ sich, sobald der Dienst antwortet. Später baut es nur neu, wenn sich unter
 
 Beenden mit <kbd>Strg</kbd>+<kbd>C</kbd>. Direkteinstieg in eine Ansicht über
 den Hash: `#verbrauch`, `#einstellungen`.
+
+Der erste Lauf dauert ein paar Minuten – venv anlegen, npm-Pakete laden,
+Frontend bauen. Jeder weitere startet in Sekunden.
+
+### Läuft es?
+
+```bash
+curl http://127.0.0.1:8787/api/health
+```
+
+`sources` zeigt, welche der vier Quellen gefunden wurden. Steht dort überall
+`false`, hat der Dienst die CLI-Dateien nicht gefunden – dann helfen die
+`AIUSAGE_*_PATH`-Variablen aus der [Konfiguration](#konfiguration). Dieselbe
+Übersicht steht in der Oberfläche unter **Einstellungen → Dienst**.
+
+### Nur ansehen, ohne Anmeldedaten
+
+```bash
+AIUSAGE_DEMO_MODE=1 ./start.sh
+```
+
+```powershell
+$env:AIUSAGE_DEMO_MODE = 1; .\start.ps1
+```
+
+Die Werte sind dann simuliert und in der Oberfläche sichtbar als **Demo**
+gekennzeichnet. Praktisch, um die Oberfläche anzusehen oder daran zu
+entwickeln, ohne eine CLI anzumelden.
 
 <details>
 <summary>Von Hand, ohne Skript</summary>
@@ -203,6 +275,12 @@ cd frontend && npm install
 npm run build          # dist/ – wird vom Backend ausgeliefert
 npm run dev            # http://127.0.0.1:5173, /api wird auf 8787 geproxyt
 ```
+
+`npm run dev` startet nur das Frontend – das Backend läuft daneben als eigener
+Prozess und muss ebenfalls laufen, sonst meldet die Oberfläche *Kein Backend
+erreichbar*. Wer am Backend arbeitet, hängt `--reload` an den uvicorn-Aufruf;
+`start.ps1`/`start.sh` tun das bewusst nicht, weil der Kiosk keinen Dateiwächter
+braucht.
 
 </details>
 
@@ -254,6 +332,10 @@ so lange einen Splash. Ein selbst gestartetes Backend endet mit dem Fenster –
 auch wenn die App abstürzt oder im Taskmanager abgeschossen wird. Ein Installer
 entsteht mit `npm run build` in [`desktop/`](desktop/).
 
+Die direkte EXE baut das Vue-Frontend nicht selbst. Nach Änderungen unter
+`frontend/src` deshalb einmal `npm run build` in `frontend/` oder `start.ps1`
+ausführen; die Verknüpfung zeigt immer den zuletzt erzeugten `frontend/dist`.
+
 | Argument | Umgebungsvariable | Wirkung |
 | --- | --- | --- |
 | `--monitor smallest` / `4` / `DISPLAY4` | `AIUSAGE_DESKTOP_MONITOR` | Bildschirm über Fläche, Nummer oder Gerätename |
@@ -298,9 +380,6 @@ Ablegen unter `~/.config/systemd/user/ai-usage.service`, dann
 
 </details>
 
-Ohne Credentials lässt sich die Oberfläche mit `AIUSAGE_DEMO_MODE=1`
-entwickeln – die Werte sind dann sichtbar als **Demo** gekennzeichnet.
-
 ## Konfiguration
 
 Alles über Umgebungsvariablen mit dem Präfix `AIUSAGE_` oder über
@@ -333,6 +412,8 @@ Dieselben Angaben liefert `GET /api/health`.
 
 | Symptom | Ursache | Abhilfe |
 | --- | --- | --- |
+| Nach frischem Klon bleiben beide Kacheln leer | Keine CLI angemeldet – es gibt schlicht nichts zu lesen | Claude Code bzw. Codex einmal starten und anmelden. `GET /api/health` zeigt unter `sources`, was gefunden wurde. |
+| `start.ps1` bricht mit *py … nicht gefunden* / *npm … nicht gefunden* ab | Python oder Node fehlen bzw. stehen nicht im `PATH` | Python 3.10+ und Node.js 22+ installieren, Terminal neu öffnen |
 | Kachel zeigt *Token wurde abgelehnt* (`unauthorized`) | Access-Token abgelaufen; die CLI erneuert ihn nur, während sie läuft | CLI einmal starten bzw. neu anmelden. Codex überbrückt das über die Rollout-Logs. |
 | Abzeichen **Gehalten**, Werte stehen still | Der frische Abruf scheiterte, der letzte gültige Wert wird weitergezeigt | Grund steht in der Fußzeile der Kachel. Löst sich beim nächsten geglückten Poll von allein; nach 30 Min. wird auf den Leerzustand umgeschaltet. |
 | *Anbieter drosselt gerade* (`rate_limited`) | Zu viele Anfragen an den undokumentierten Endpunkt | Der Dienst pausiert automatisch. Dauerhaft: `AIUSAGE_POLL_INTERVAL_SECONDS` erhöhen. |
@@ -391,13 +472,14 @@ schieben Richtung `resting`. Die zuletzt gespielte Laune wird auf ein Viertel
 gedämpft, nicht ausgeschlossen: Sobald nur zwei Launen Gewicht haben, ließe
 ein Ausschluss stur abwechseln und die Gewichte wären wirkungslos.
 
-Beide Formate laufen nebeneinander. Ein MP4 meldet sein Ende, wird also genau
-dreimal gespielt – mit 0,35 s Ruhe dazwischen. Ein **GIF trägt seine Schleife
-in der Datei** und meldet weder Dauer noch Ende: Dort steht die Laufzeit in
-Sekunden neben dem Dateinamen in `mascot.ts` (gemessen aus den
-Bildverzögerungen), und die Standzeit wird daraus gerechnet. Eine Ruhepause
-zwischen den Durchläufen ist bei GIFs nicht möglich. **Tauschst du eine Datei,
-passe die Laufzeit mit an.**
+Beide Formate laufen nebeneinander. MP4s schleift der Browser nativ; nach drei
+Durchläufen wechselt die Komponente anhand der hinterlegten Laufzeit. Bleibt
+der Abspielkopf fünf Sekunden stehen, wird der Clip neu gewählt. Pro Kachel
+bleibt höchstens ein Medium im DOM, damit kleine WebViews nicht mehrere
+Videodecoder für unsichtbare Übergangsebenen offenhalten. Ein **GIF trägt seine
+Schleife in der Datei** und meldet weder Dauer noch Ende. Für beide Formate
+steht die Laufzeit deshalb in Sekunden neben dem Dateinamen in `mascot.ts`.
+**Tauschst du eine Datei, passe die Laufzeit mit an.**
 
 Er sitzt mit fester Kantenlänge (5,5 rem) rechts neben der Balkenspalte, nicht
 darunter: Zwei Limitfenster sind ohnehin höher als er, dadurch kostet er keine
@@ -431,11 +513,14 @@ Text, nie nur Farbe.
 Drei Ansichten:
 
 - **Kontingent** – Restkontingent je Fenster, Reset-Countdown, Verlaufschart
-- **Verbrauch** – Token aus den JSONL-Logs, gruppiert nach Projekt, Modell oder Tag
+- **Verbrauch** – Kennzahlen, Wochenraster und Token aus den JSONL-Logs,
+  gruppiert nach Projekt, Modell oder Tag
 - **Einstellungen** – Anzeige (große Schrift, Kiosk, Nachtmodus), Daten
   (Intervall, Zeiträume), Dienst (gefundene Quellen, letzter Poll, Bindung)
 
-![Verbrauchsansicht mit Auswertung der JSONL-Logs](docs/screenshots/verbrauch.png)
+![Kontingent: Restkontingent je Fenster, Reset-Countdown und Verlauf](docs/screenshots/kontingent.png)
+
+![Verbrauchsansicht mit Kennzahlen, Wochenraster und Auswertung der JSONL-Logs](docs/screenshots/verbrauch.png)
 
 ![Einstellungen mit vertikaler Bereichsleiste](docs/screenshots/einstellungen.png)
 
@@ -443,6 +528,42 @@ Projektnamen werden über beide Quellen hinweg vereinheitlicht: Claude legt
 Ordner mit slugifiziertem Pfad an (`c--me-dev-projects-ai-usage`), Codex nennt
 das echte Arbeitsverzeichnis (`ai_usage`) – ohne Normalisierung stünde
 dasselbe Projekt zweimal unterschiedlich in der Auswertung.
+
+### Was die Verbrauchsansicht beantwortet
+
+Eine Balkenliste sagt, *wie viel* verbraucht wurde. Darüber steht deshalb eine
+Reihe von acht Kacheln, die sagt, *wie gearbeitet wurde*: Sitzungen,
+Nachrichten, Token, aktive Tage, laufende und längste Serie, Spitzenstunde und
+das meistgenutzte Modell. Alle Werte kommen aus demselben Durchlauf durch die
+JSONL-Dateien, den auch die Gruppierung braucht – kein zweiter Scan.
+
+Zwei Feinheiten, die sonst falsche Zahlen ergäben:
+
+- Das **bevorzugte Modell** wird in Nachrichten gezählt, nicht in Token. Nach
+  Token gewänne immer das teuerste Modell statt des tatsächlich meistgenutzten.
+- Die **laufende Serie** bricht nicht, solange der heutige Tag noch leer ist –
+  sonst stünde dort jeden Morgen bis zur ersten Nachricht eine Null.
+
+Das **Wochenraster** legt Wochentag gegen Stunde, nicht Tag gegen Tag: So ist
+es für 7 wie für 90 Tage gleich gut gefüllt, während ein Kalenderraster über
+eine Woche nur eine dünne Spalte wäre. Es färbt nach Token je Zelle, geviertelt
+über die belegten Zellen statt über den Höchstwert – Token je Stunde streuen um
+Größenordnungen, eine lineare Teilung färbte fast alles auf der untersten Stufe.
+
+Die Rampe ist ein einzelner Blauton in vier Schritten, absichtlich weder
+Koralle noch Türkis: Sie zeigt Menge über beide Anbieter hinweg, nicht
+Identität. Geprüft gegen die Kachelfläche auf monotone Lichtheit, sichtbare
+Stufenabstände und ein helles Ende über 2:1.
+
+Modell-IDs werden für die Anzeige gekürzt (`claude-opus-4-5-20251101` →
+*Opus 4.5*), aber nur nach bekannten Mustern: Was nicht passt, steht unverändert
+da – ein unbekanntes Modell soll auffallen und nicht in einer hübschen, aber
+falschen Bezeichnung verschwinden. Die rohe ID bleibt im `title`.
+
+Die Zeile am Fuß rechnet die Tokensumme in Buchlängen um. Sie ist Spielerei,
+aber eine ehrliche: Gerechnet wird mit der Gesamtsumme inklusive Cache-Lesungen
+– und die machen erfahrungsgemäß den Löwenanteil aus, wie die Zeile
+*davon aus dem Cache* daneben zeigt.
 
 ## Sicherheit
 
@@ -481,9 +602,10 @@ backend/
 frontend/src/
 ├── api/                    Client + Typen des eigenen Backends
 ├── theme/brands.ts         Markentokens, geprüfte Serienfarben
+├── theme/models.ts         Modell-IDs für die Anzeige kürzen
 ├── theme/mascot.ts         Clipzuordnung, Tagesrhythmus, gewichtete Ziehung
 ├── composables/            useUsage · useHistory · useSettings · …
-├── components/             ProviderCard · UsageMeter · ProviderMascot · AlertBanner · …
+├── components/             ProviderCard · UsageMeter · ProviderMascot · ActivityHeatmap · …
 ├── views/                  Dashboard · Logs · Settings
 └── assets/
     ├── main.css            Grundlayout, Kiosk-Regeln

@@ -115,15 +115,35 @@ const gridValues = [0, 25, 50, 75, 100]
 
 const timeTicks = computed(() => {
   const { start, end } = domain.value
+  const stepHours =
+    props.hours <= 6 ? 2 : props.hours <= 24 ? 6 : props.hours <= 72 ? 12 : 24
   const format = new Intl.DateTimeFormat('de-DE', {
     hour: '2-digit',
     minute: '2-digit',
     ...(props.hours > 48 ? { weekday: 'short' } : {}),
   })
-  return Array.from({ length: 5 }, (_, index) => {
-    const t = start + ((end - start) * index) / 4
-    return { t, label: format.format(new Date(t)) }
-  })
+
+  // Nicht vom aktuellen Minutenwert rückwärts teilen: Aus 17:52 würden
+  // sonst ausschließlich Ticks auf :52. Stattdessen an gut lesbaren vollen
+  // Stunden ausrichten und den beweglichen rechten Rand als „Jetzt“ benennen.
+  const first = new Date(start)
+  first.setMinutes(0, 0, 0)
+  if (stepHours === 24) first.setHours(0)
+  else first.setHours(Math.ceil(first.getHours() / stepHours) * stepHours)
+  while (first.getTime() < start) first.setHours(first.getHours() + stepHours)
+
+  const ticks: Array<{ t: number; label: string }> = []
+  const cursor = new Date(first)
+  while (cursor.getTime() <= end) {
+    ticks.push({ t: cursor.getTime(), label: format.format(cursor) })
+    cursor.setHours(cursor.getHours() + stepHours)
+  }
+
+  // Kein Zahlenlabel direkt neben „Jetzt“ quetschen.
+  const last = ticks.at(-1)
+  if (last && end - last.t < stepHours * 3_600_000 * 0.4) ticks.pop()
+  ticks.push({ t: end, label: 'Jetzt' })
+  return ticks
 })
 
 // --- Crosshair: funktioniert mit Maus und Finger gleichermaßen -----------

@@ -67,6 +67,8 @@ def read_codex_records(root: Path, since: datetime) -> ReadResult:
                         provider="codex",
                         project=project_name(cwd, path.parent.name),
                         model=model if isinstance(model, str) and model else "Unbekannt",
+                        # Codex schreibt je Sitzung genau eine Rollout-Datei.
+                        session=path.stem,
                         totals=TokenTotals(
                             input_tokens=token_count(usage.get("input_tokens")),
                             output_tokens=token_count(usage.get("output_tokens")),

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import timedelta
-from typing import Literal
+from collections import Counter
+from datetime import date, timedelta
+from typing import Iterable, Literal
 
 from ..config import Settings
-from ..models import LogBucket, LogSummary, TokenTotals
+from ..models import ActivityCell, LogBucket, LogInsights, LogSummary, TokenTotals
 from ..normalize import now
 from .claude_jsonl import read_claude_records
 from .codex_jsonl import read_codex_records
@@ -30,6 +31,71 @@ def _group_value(record: LogRecord, group_by: GroupBy) -> tuple[str, str]:
         return record.model.casefold(), record.model
     label = "Claude" if record.provider == "claude" else "Codex"
     return record.provider, label
+
+
+def _streaks(active: set[date], today: date) -> tuple[int, int]:
+    """Aktuelle und längste Serie aufeinanderfolgender aktiver Tage."""
+    if not active:
+        return 0, 0
+
+    ordered = sorted(active)
+    longest = run = 1
+    for previous, current in zip(ordered, ordered[1:]):
+        run = run + 1 if (current - previous).days == 1 else 1
+        longest = max(longest, run)
+
+    # Der heutige Tag darf noch leer sein, ohne die laufende Serie zu brechen –
+    # sonst stünde jeden Morgen bis zur ersten Nachricht eine Null da.
+    cursor = today if today in active else today - timedelta(days=1)
+    streak = 0
+    while cursor in active:
+        streak += 1
+        cursor -= timedelta(days=1)
+    return streak, longest
+
+
+def _insights(records: Iterable[LogRecord]) -> LogInsights:
+    sessions: set[tuple[str, str]] = set()
+    active_days: set[date] = set()
+    hours: Counter[int] = Counter()
+    models: Counter[str] = Counter()
+    grid: dict[tuple[int, int], list[int]] = {}
+    messages = 0
+
+    for record in records:
+        messages += 1
+        sessions.add((record.provider, record.session))
+        # Alles Zeitliche in Ortszeit: „23 Uhr“ meint die Uhr an der Wand,
+        # nicht UTC.
+        local = record.observed_at.astimezone()
+        active_days.add(local.date())
+        hours[local.hour] += 1
+        models[record.model] += 1
+        cell = grid.setdefault((local.weekday(), local.hour), [0, 0])
+        cell[0] += 1
+        cell[1] += record.totals.total
+
+    current_streak, longest_streak = _streaks(active_days, now().astimezone().date())
+    top_model, top_model_messages = (
+        models.most_common(1)[0] if models else (None, 0)
+    )
+
+    return LogInsights(
+        sessions=len(sessions),
+        messages=messages,
+        active_days=len(active_days),
+        current_streak=current_streak,
+        longest_streak=longest_streak,
+        peak_hour=hours.most_common(1)[0][0] if hours else None,
+        top_model=top_model,
+        top_model_messages=top_model_messages,
+        activity=[
+            ActivityCell(
+                weekday=weekday, hour=hour, messages=count, tokens=tokens
+            )
+            for (weekday, hour), (count, tokens) in sorted(grid.items())
+        ],
+    )
 
 
 class LogStore:
@@ -74,4 +140,5 @@ class LogStore:
             skipped_lines=claude.skipped_lines + codex.skipped_lines,
             totals=totals,
             buckets=buckets,
+            insights=_insights(records),
         )

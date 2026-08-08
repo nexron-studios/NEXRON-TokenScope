@@ -107,6 +107,34 @@ class LogBucket(BaseModel):
     totals: TokenTotals
 
 
+class ActivityCell(BaseModel):
+    """Eine Zelle des Wochenrasters: Wochentag (0 = Montag) × Stunde."""
+
+    weekday: int = Field(ge=0, le=6)
+    hour: int = Field(ge=0, le=23)
+    messages: int
+    tokens: int
+
+
+class LogInsights(BaseModel):
+    """Kennzahlen über denselben Datensatz, den auch die Gruppierung zählt."""
+
+    sessions: int = 0
+    messages: int = 0
+    active_days: int = 0
+    #: Serie zusammenhängender aktiver Tage, die bis heute (oder gestern) reicht.
+    current_streak: int = 0
+    longest_streak: int = 0
+    #: Stunde mit den meisten Nachrichten, lokale Zeit.
+    peak_hour: int | None = None
+    #: Meistgenutztes Modell, gezählt in Nachrichten – nicht in Token, sonst
+    #: gewinnt immer das teuerste Modell statt des tatsächlich bevorzugten.
+    top_model: str | None = None
+    top_model_messages: int = 0
+    #: Nur belegte Zellen; die Oberfläche füllt das Raster selbst auf.
+    activity: list[ActivityCell] = Field(default_factory=list)
+
+
 class LogSummary(BaseModel):
     since: datetime
     days: int
@@ -115,6 +143,7 @@ class LogSummary(BaseModel):
     skipped_lines: int
     totals: TokenTotals
     buckets: list[LogBucket]
+    insights: LogInsights = Field(default_factory=LogInsights)
 
 
 class HealthResponse(BaseModel):

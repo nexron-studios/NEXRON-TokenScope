@@ -10,7 +10,6 @@ import {
   pickClip,
   pickMood,
   remainingOfPrimary,
-  REPLAY_DELAY_MS,
   severityOfPrimary,
 } from '@/theme/mascot'
 import type { Clip, Mood } from '@/theme/mascot'
@@ -41,25 +40,26 @@ const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 const forced = computed(() => forcedMood(props.provider, props.backendDown === true))
 
 /**
- * Zwei Ebenen, die überblenden: Die neue lädt unsichtbar, erst wenn sie
- * bereit ist, wird umgeschaltet. Alle Clips gleichzeitig im DOM zu halten
- * wäre der einfachere Weg, aber ein verstecktes GIF animiert weiter – bei
- * gut zwanzig Clips je Anbieter hätte das den Kiosk beschäftigt.
+ * Es bleibt absichtlich nur ein Medium im DOM. Zwei Ebenen für eine
+ * Überblendung hielten pro Kachel zwei Videodecoder offen; zusammen mit der
+ * zweiten Anbieter-Kachel konnte das besonders in WebViews einen der MP4s
+ * anhalten. Der Zähler erzwingt trotzdem bei jeder Runde ein neues Element.
  */
-const layers = ref<Array<Clip | undefined>>([undefined, undefined])
-const front = ref(0)
-
-const current = ref<{ mood: Mood; clip: Clip }>()
-let pending: { mood: Mood; clip: Clip } | undefined
-
-const videos = new Map<number, HTMLVideoElement>()
-const registerVideo = (index: number, element: HTMLVideoElement | null) => {
-  if (element) videos.set(index, element)
-  else videos.delete(index)
+interface Slot {
+  clip: Clip
+  token: number
 }
 
-let played = 0
+const slot = ref<Slot>()
+let token = 0
+
+const current = ref<{ mood: Mood; clip: Clip }>()
+let pending: { mood: Mood; clip: Clip; token: number } | undefined
+
 let timer: number | undefined
+let guard: number | undefined
+let playbackGuard: number | undefined
+let activeVideo: HTMLVideoElement | undefined
 
 const clearTimer = () => {
   if (timer === undefined) return
@@ -67,10 +67,46 @@ const clearTimer = () => {
   timer = undefined
 }
 
+const clearGuard = () => {
+  if (guard === undefined) return
+  window.clearTimeout(guard)
+  guard = undefined
+}
+
+const clearPlaybackGuard = () => {
+  if (playbackGuard === undefined) return
+  window.clearTimeout(playbackGuard)
+  playbackGuard = undefined
+}
+
+/**
+ * Zwischen `show` und `onReady` hängt der Ablauf an einem einzigen Ereignis
+ * des Browsers. Bleibt es aus – abgebrochener Ladevorgang, verschluckter
+ * Fehler, eine Ebene, die gar nicht neu aufgebaut wurde –, liefe nichts
+ * mehr an. Diese Reißleine würfelt dann einfach neu.
+ */
+const WATCHDOG_MS = 8_000
+const PLAYBACK_STALL_MS = 5_000
+
 const show = (mood: Mood, clip: Clip) => {
   clearTimer()
-  pending = { mood, clip }
-  layers.value[1 - front.value] = clip
+  clearGuard()
+  clearPlaybackGuard()
+  activeVideo?.pause()
+  activeVideo = undefined
+
+  token += 1
+  pending = { mood, clip, token }
+  slot.value = { clip, token }
+
+  const requestedToken = token
+
+  guard = window.setTimeout(() => {
+    guard = undefined
+    if (pending?.token !== requestedToken) return
+    pending = undefined
+    advance(forced.value)
+  }, WATCHDOG_MS)
 }
 
 /** Würfelt die nächste Laune, oder bleibt bei der erzwungenen. */
@@ -100,63 +136,90 @@ const advance = (into?: Mood) => {
 }
 
 /**
- * Ein GIF meldet kein Ende, also wird seine Standzeit aus der bekannten
- * Laufzeit gerechnet. MP4s treibt stattdessen ihr `ended`-Ereignis weiter –
- * nur dort ist die Ruhe zwischen den Durchläufen überhaupt möglich.
+ * Der Wechsel hängt bewusst an der bekannten Laufzeit und nicht am
+ * `ended`-Ereignis des Browsers. Das kann bei MP4s ausbleiben und würde den
+ * Ablauf sonst dauerhaft anhalten. Die MP4 selbst schleift der Browser.
  */
 const beginDwell = () => {
   const clip = current.value?.clip
-  if (!clip || clip.kind !== 'gif') return
+  if (!clip) return
 
   timer = window.setTimeout(
-    () => advance(forced.value),
+    () => {
+      timer = undefined
+      advance(forced.value)
+    },
     LOOPS_PER_CLIP * clip.seconds * 1000,
   )
 }
 
-/** Die neue Ebene ist geladen – jetzt erst wird sie sichtbar. */
-const onReady = (index: number) => {
-  if (index === front.value || !pending) return
+const armPlaybackGuard = (slotToken: number, video: HTMLVideoElement) => {
+  clearPlaybackGuard()
+  playbackGuard = window.setTimeout(() => {
+    playbackGuard = undefined
+    if (slot.value?.token !== slotToken || video !== activeVideo) return
 
-  front.value = index
-  current.value = pending
+    // Browser halten Medien in Hintergrund-Tabs absichtlich an. Dort nicht
+    // unnötig neu laden; nach dem Sichtbarwerden kommen wieder timeupdates.
+    if (document.hidden) {
+      armPlaybackGuard(slotToken, video)
+      return
+    }
+
+    advance(forced.value)
+  }, PLAYBACK_STALL_MS)
+}
+
+/** Das neue Medium ist geladen und übernimmt seine Runde. */
+const onReady = (slotToken: number, event: Event) => {
+  if (slot.value?.token !== slotToken || pending?.token !== slotToken) return
+
+  clearGuard()
+  clearPlaybackGuard()
+  current.value = { mood: pending.mood, clip: pending.clip }
   pending = undefined
-  played = 0
+
+  const element = event.currentTarget
+  activeVideo = element instanceof HTMLVideoElement ? element : undefined
+  if (activeVideo) {
+    armPlaybackGuard(slotToken, activeVideo)
+    // `autoplay` reicht normalerweise. Der explizite Aufruf fängt auch
+    // Browser ab, die erst nach `canplay` zuverlässig starten.
+    void activeVideo.play().catch(() => undefined)
+  }
 
   beginDwell()
+}
+
+/** Jeder echte Fortschritt verlängert die Reißleine für den sichtbaren MP4. */
+const onProgress = (slotToken: number, event: Event) => {
+  const element = event.currentTarget
+  if (
+    slot.value?.token !== slotToken ||
+    !(element instanceof HTMLVideoElement) ||
+    element !== activeVideo
+  ) {
+    return
+  }
+
+  armPlaybackGuard(slotToken, element)
 }
 
 /**
  * Lädt eine Ebene nicht, käme nie ein `onReady` und der Begleiter bliebe
  * für immer auf dem alten Bild stehen. Lieber die nächste Laune versuchen.
  */
-const onFailed = (index: number) => {
-  if (index === front.value) return
+const onFailed = (slotToken: number) => {
+  if (slot.value?.token !== slotToken) return
+
+  clearGuard()
+  clearPlaybackGuard()
+  activeVideo?.pause()
+  activeVideo = undefined
   pending = undefined
-  layers.value[index] = undefined
+  slot.value = undefined
   clearTimer()
   timer = window.setTimeout(() => advance(forced.value), 2_000)
-}
-
-const onEnded = (index: number) => {
-  // Verspätete Ereignisse der abgelösten Ebene zählen nicht mit.
-  if (index !== front.value) return
-
-  played += 1
-
-  if (played >= LOOPS_PER_CLIP) {
-    advance(forced.value)
-    return
-  }
-
-  clearTimer()
-  timer = window.setTimeout(() => {
-    timer = undefined
-    const video = videos.get(index)
-    if (!video) return
-    video.currentTime = 0
-    void video.play().catch(() => undefined)
-  }, REPLAY_DELAY_MS)
 }
 
 /** Eine Störung kommt oder geht: sofort umschalten, ohne die Runde abzuwarten. */
@@ -166,44 +229,44 @@ onMounted(() => {
   if (!reduceMotion.value) advance(forced.value)
 })
 
-onBeforeUnmount(clearTimer)
+onBeforeUnmount(() => {
+  clearTimer()
+  clearGuard()
+  clearPlaybackGuard()
+  activeVideo?.pause()
+})
 </script>
 
 <template>
   <div v-if="reel && !reduceMotion" class="mascot">
     <!-- Rein schmückend: Was der Clip andeutet, steht als Abzeichen, Hinweis
          und Zustandswort ohnehin im Text der Kachel. -->
-    <div
-      v-for="(clip, index) in layers"
-      :key="index"
-      class="layer"
-      :class="{ on: index === front }"
-    >
+    <div class="layer">
       <video
-        v-if="clip?.kind === 'video'"
-        :key="clip.src"
-        :ref="(el) => registerVideo(index, el as HTMLVideoElement | null)"
-        :src="clip.src"
+        v-if="slot?.clip.kind === 'video'"
+        :key="slot.token"
+        :src="slot.clip.src"
         class="art blend"
         autoplay
+        loop
         muted
         playsinline
         preload="auto"
         disablepictureinpicture
         aria-hidden="true"
-        @canplay="onReady(index)"
-        @ended="onEnded(index)"
-        @error="onFailed(index)"
+        @canplay="onReady(slot.token, $event)"
+        @timeupdate="onProgress(slot.token, $event)"
+        @error="onFailed(slot.token)"
       />
       <img
-        v-else-if="clip"
-        :key="clip.src"
-        :src="clip.src"
+        v-else-if="slot"
+        :key="slot.token"
+        :src="slot.clip.src"
         class="art"
         alt=""
         aria-hidden="true"
-        @load="onReady(index)"
-        @error="onFailed(index)"
+        @load="onReady(slot.token, $event)"
+        @error="onFailed(slot.token)"
       />
     </div>
   </div>
@@ -225,12 +288,6 @@ onBeforeUnmount(clearTimer)
 .layer {
   position: absolute;
   inset: 0;
-  opacity: 0;
-  transition: opacity 220ms ease;
-}
-
-.layer.on {
-  opacity: 1;
 }
 
 .art {

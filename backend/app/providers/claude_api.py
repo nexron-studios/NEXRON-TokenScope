@@ -32,6 +32,17 @@ _SKIP_KEYS = frozenset(
     }
 )
 
+# Fenster, die wir anzeigen. Der Endpunkt liefert daneben interne
+# Codename-Buckets (z. B. "nimbus_quill") ohne Fenstergröße und Reset.
+_DISPLAY_KEYS = frozenset(
+    {
+        "five_hour",
+        "seven_day",
+        "seven_day_opus",
+        "seven_day_oauth_apps",
+    }
+)
+
 _PLAN_LABELS = {
     "max": "Max",
     "pro": "Pro",
@@ -139,6 +150,16 @@ class ClaudeProvider:
                 "Keine Limitfenster in der Antwort – Format hat sich geändert.",
                 plan=plan,
             )
+
+        named = [window for window in windows if window.key in _DISPLAY_KEYS]
+        if named:
+            dropped = [window.key for window in windows if window.key not in _DISPLAY_KEYS]
+            if dropped:
+                logger.debug("Unbenannte Limitfenster ausgeblendet: %s", dropped)
+            if not any(window.primary for window in named):
+                # windows_from_mapping sortiert nach Fenstergröße.
+                named[0].primary = True
+            windows = named
 
         raw_plan = block.get("plan") or block.get("subscription_type")
         if isinstance(raw_plan, str) and raw_plan:

@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(py --version)"
+      "Bash(py --version)",
+      "Bash(ls ~/.vscode/extensions 2>/dev/null | grep -iE \"vue|volar|typescript\" ; echo \"--- alle \\(Anzahl\\) ---\"; ls ~/.vscode/extensions 2>/dev/null | wc -l)",
+      "Read(//c/Users/Home/.vscode/extensions/**)"
     ]
   }
 }

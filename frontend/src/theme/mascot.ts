@@ -19,12 +19,6 @@ export type Mood =
 /** Wie oft derselbe Clip läuft, bevor neu gewürfelt wird. */
 export const LOOPS_PER_CLIP = 3
 
-/**
- * Ruhe zwischen zwei Durchläufen. Gilt nur für MP4s: Ein GIF trägt seine
- * Schleife in der Datei und lässt sich von außen nicht anhalten.
- */
-export const REPLAY_DELAY_MS = 350
-
 export interface Clip {
   src: string
   /**

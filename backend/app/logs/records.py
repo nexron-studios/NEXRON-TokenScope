@@ -12,6 +12,8 @@ class LogRecord:
     provider: ProviderId
     project: str
     model: str
+    #: Sitzung, aus der die Nachricht stammt – je Anbieter eindeutig.
+    session: str
     totals: TokenTotals
 
 

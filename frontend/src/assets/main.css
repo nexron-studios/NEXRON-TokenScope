@@ -20,6 +20,13 @@
   --font-weight-black: 900;
 }
 
+/* `inline`, damit Tailwind den Wert einsetzt statt auf die Theme-Variable zu
+   verweisen: `--brand-accent` steht nicht hier, sondern wird pro Kachel per
+   `:style` gesetzt (brandVars). Nur so löst sie am Element auf. */
+@theme inline {
+  --color-brand-accent: var(--brand-accent);
+}
+
 :root {
   color: #f8f8fb;
   background: #0c0c0f;

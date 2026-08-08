@@ -56,11 +56,15 @@ def read_claude_records(root: Path, since: datetime) -> ReadResult:
                     or f"{path}:{line_number}"
                 )
                 model = message.get("model")
+                session = item.get("sessionId")
                 messages[str(identity)] = LogRecord(
                     observed_at=observed_at,
                     provider="claude",
                     project=project_name(item.get("cwd"), path.parent.name),
                     model=model if isinstance(model, str) and model else "Unbekannt",
+                    # Eine Sitzung ist eine Datei; die `sessionId` steht in jeder
+                    # Zeile und ueberlebt auch ein Umbenennen der Datei.
+                    session=str(session) if session else path.stem,
                     totals=TokenTotals(
                         input_tokens=token_count(usage.get("input_tokens")),
                         output_tokens=token_count(usage.get("output_tokens")),
