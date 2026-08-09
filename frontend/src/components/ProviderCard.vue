@@ -193,15 +193,23 @@ const staleMinutes = computed(() => {
       </div>
     </div>
 
+    <!-- Ohne Zahlen trägt der Begleiter die Fläche: Er füllt den Raum, den
+         sonst Meter und Countdown einnehmen, und zeigt dieselbe Störung, die
+         darunter im Klartext steht. -->
     <div v-else class="empty">
-      <p class="empty-title">Keine Kontingentdaten</p>
-      <p class="empty-text">
-        {{
-          provider.message ||
-          STATUS_HINTS[provider.status] ||
-          "Quelle liefert nichts."
-        }}
-      </p>
+      <div class="empty-stage">
+        <ProviderMascot :provider="provider" :backend-down="backendDown" />
+      </div>
+      <div class="empty-copy">
+        <p class="empty-title">Keine Kontingentdaten</p>
+        <p class="empty-text">
+          {{
+            provider.message ||
+            STATUS_HINTS[provider.status] ||
+            "Quelle liefert nichts."
+          }}
+        </p>
+      </div>
     </div>
 
     <footer class="foot">
@@ -407,10 +415,66 @@ const staleMinutes = computed(() => {
   min-width: 0;
 }
 
+/* Nimmt denselben Raum ein wie der Rumpf mit Zahlen – die Kachel behält
+   ihre Höhe, egal ob eine Quelle liefert oder nicht. */
 .empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 0;
+  overflow: hidden;
   border: 1px dashed var(--brand-hairline);
   border-radius: 0.9rem;
-  padding: 0.9rem;
+  padding: 0.8rem 0.9rem;
+  text-align: center;
+}
+
+/* Die Bühne nimmt die freie Höhe und hält die Figur in ihrer Mitte. Ohne
+   Begleiter – abgeschaltete Bewegung, kein hinterlegter Clip – fällt sie in
+   sich zusammen, damit der Text nicht allein am unteren Rand steht. */
+/* Wächst in die freie Höhe hinein, gibt sie aber auch wieder her: Die
+   Startgröße bleibt klein und `min-height: 0` erlaubt das Schrumpfen. So
+   diktiert der leere Zustand der Kachelzeile keine neue Höhe, sondern
+   füllt die, die der Nachbar ohnehin vorgibt. */
+.empty-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 1 1 4rem;
+  width: 100%;
+  min-height: 0;
+  --mascot-size: 8rem;
+}
+
+.empty-stage:empty {
+  flex: none;
+}
+
+/* Weicher Schein in der Markenfarbe: hebt die Figur von der Fläche ab,
+   ohne eine zweite Kante zu ziehen. */
+.empty-stage::before {
+  content: "";
+  position: absolute;
+  width: min(11rem, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand-accent) 18%, transparent),
+    transparent 68%
+  );
+}
+
+.empty-stage:empty::before {
+  display: none;
+}
+
+.empty-copy {
+  flex-shrink: 0;
+  max-width: 22rem;
 }
 
 .empty-title {
@@ -423,6 +487,7 @@ const staleMinutes = computed(() => {
   color: var(--brand-ink-muted);
   font-size: 0.75rem;
   line-height: 1.35;
+  text-wrap: balance;
 }
 
 .foot {

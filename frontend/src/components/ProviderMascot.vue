@@ -276,12 +276,16 @@ onBeforeUnmount(() => {
 /*
  * Starre Kantenlänge neben der Meterspalte. Die Ebenen liegen absolut
  * darin, damit weder Ladezustand noch Eigenmaße eines Clips die Zeilenhöhe
- * beeinflussen können.
+ * beeinflussen können. `--mascot-size` lässt die Kachel die Kantenlänge
+ * anheben, wo der Begleiter mehr als Beiwerk ist; die Deckel darüber
+ * halten ihn trotzdem im Kasten, wenn dort weniger Platz ist.
  */
 .mascot {
   position: relative;
-  width: 5.5rem;
-  height: 5.5rem;
+  width: var(--mascot-size, 5.5rem);
+  height: var(--mascot-size, 5.5rem);
+  max-width: 100%;
+  max-height: 100%;
   flex: none;
 }
 
