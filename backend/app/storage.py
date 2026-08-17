@@ -169,18 +169,16 @@ class SnapshotStore:
 
         return list(series.values())
 
-    def latest_per_provider(self, *, max_age_minutes: float = 30.0) -> list[ProviderUsage]:
+    def latest_per_provider(self) -> list[ProviderUsage]:
         """Rekonstruiert den zuletzt gespeicherten Stand je Anbieter.
 
         Damit steht nach einem Neustart sofort wieder ein Überbrückungswert
         bereit, statt dass die Kachel leer bleibt, bis der erste Poll glückt.
-        Die Werte sind als ``stale`` markiert; abgelaufene Fenster filtert der
-        Poller heraus.
+        Die Werte sind als ``stale`` markiert und werden als historischer Stand
+        angezeigt, wenn der frische Abruf weiterhin scheitert.
         """
         if self._connection is None:
             return []
-
-        since = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
 
         try:
             rows = self._connection.execute(
@@ -190,16 +188,13 @@ class SnapshotStore:
                        s.is_primary, s.captured_at
                 FROM snapshots AS s
                 JOIN (
-                    SELECT provider, window_key, MAX(captured_at) AS captured_at
+                    SELECT provider, MAX(captured_at) AS captured_at
                     FROM snapshots
-                    WHERE captured_at >= ?
-                    GROUP BY provider, window_key
+                    GROUP BY provider
                 ) AS newest
                   ON newest.provider = s.provider
-                 AND newest.window_key = s.window_key
                  AND newest.captured_at = s.captured_at
-                """,
-                (since.isoformat(),),
+                """
             ).fetchall()
         except sqlite3.Error as exc:
             logger.warning("Letzter Stand nicht lesbar: %s", exc)
@@ -249,7 +244,16 @@ class SnapshotStore:
         cutoff = datetime.now(timezone.utc) - timedelta(days=self._retention_days)
         try:
             cursor = self._connection.execute(
-                "DELETE FROM snapshots WHERE captured_at < ?", (cutoff.isoformat(),)
+                """
+                DELETE FROM snapshots
+                WHERE captured_at < ?
+                  AND captured_at <> (
+                      SELECT MAX(latest.captured_at)
+                      FROM snapshots AS latest
+                      WHERE latest.provider = snapshots.provider
+                  )
+                """,
+                (cutoff.isoformat(),),
             )
         except sqlite3.Error as exc:
             logger.warning("Aufräumen fehlgeschlagen: %s", exc)

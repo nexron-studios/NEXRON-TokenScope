@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import AlertBanner from '@/components/AlertBanner.vue'
 import ProviderCard from '@/components/ProviderCard.vue'
+import ProviderCardPlaceholder from '@/components/ProviderCardPlaceholder.vue'
 import UsageHistoryChart from '@/components/UsageHistoryChart.vue'
 import { useI18n } from '@/composables/useI18n'
 import type { HistoryResponse, ProviderUsage } from '@/api/types'
@@ -13,6 +14,8 @@ const props = defineProps<{
   backendError?: string
   backendHint?: string
   loading?: boolean
+  historyLoading?: boolean
+  placeholderCount?: number
   largeText: boolean
 }>()
 
@@ -33,13 +36,25 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
       @retry="$emit('retry')"
     />
 
-    <div v-if="providers.length" class="cards">
+    <div v-if="providers.length" class="cards" :aria-busy="loading">
       <ProviderCard
         v-for="provider in providers"
         :key="provider.id"
         :provider="provider"
         :large="largeText"
         :backend-down="Boolean(backendError)"
+      />
+    </div>
+
+    <div
+      v-else-if="loading && !backendError && placeholderCount"
+      class="cards"
+      aria-busy="true"
+      :aria-label="t('dashboard.loading')"
+    >
+      <ProviderCardPlaceholder
+        v-for="index in placeholderCount"
+        :key="index"
       />
     </div>
 
@@ -53,6 +68,7 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
       :history="history"
       :hours="historyHours"
       :visible-providers="visibleIds"
+      :loading="historyLoading"
     />
   </main>
 </template>

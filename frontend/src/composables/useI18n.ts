@@ -32,10 +32,12 @@ const DE = {
   "error.logs": "Logs nicht auswertbar.",
   "dashboard.noProviders":
     "Kein Anbieter aktiv. In den Einstellungen wieder einschalten.",
+  "dashboard.loading": "Kontingentdaten werden geladen",
   "history.title": "Verlauf",
   "history.subtitle": "Verbrauch des kürzesten Fensters, aus lokalen Snapshots",
   "history.empty":
     "Noch keine Snapshots. Das Backend schreibt bei jedem Poll einen Punkt – der Verlauf füllt sich von allein.",
+  "history.loading": "Verlauf wird geladen",
   "history.aria": "Verbrauchsverlauf je Anbieter",
   "history.caption": "Verbrauch in Prozent je Anbieter und Zeitpunkt",
   "history.time": "Zeitpunkt",
@@ -199,10 +201,12 @@ const EN: Record<TranslationKey, string> = {
   "error.history": "Could not load history.",
   "error.logs": "Could not analyse logs.",
   "dashboard.noProviders": "No provider enabled. Enable one in Settings.",
+  "dashboard.loading": "Loading quota data",
   "history.title": "History",
   "history.subtitle": "Usage of the shortest window from local snapshots",
   "history.empty":
     "No snapshots yet. The backend writes a point on every poll, so the chart will fill automatically.",
+  "history.loading": "Loading history",
   "history.aria": "Usage history by provider",
   "history.caption": "Usage percentage by provider and time",
   "history.time": "Time",

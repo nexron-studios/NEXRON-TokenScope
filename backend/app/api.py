@@ -37,7 +37,10 @@ async def read_usage(
 ) -> UsageResponse:
     poller = _poller(request)
     if refresh:
-        return await poller.refresh()
+        # Der Nutzer hat ausdruecklich einen neuen Stand angefordert. Diese
+        # Abfrage darf deshalb nicht an der Entprellung fuer normale Abrufe
+        # haengen bleiben (anbieter-seitige Cooldowns gelten weiterhin).
+        return await poller.refresh(force=True)
     return poller.snapshot
 
 

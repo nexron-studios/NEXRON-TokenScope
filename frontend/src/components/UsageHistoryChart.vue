@@ -9,6 +9,7 @@ const props = defineProps<{
   history?: HistoryResponse
   hours: number
   visibleProviders: ProviderId[]
+  loading?: boolean
 }>()
 
 const { language, locale, t } = useI18n()
@@ -233,7 +234,16 @@ const timeFormat = computed(
       </ul>
     </div>
 
-    <div v-if="!series.length" class="empty">
+    <div
+      v-if="loading && !history"
+      class="chart-placeholder"
+      role="status"
+      :aria-label="t('history.loading')"
+    >
+      <span v-for="index in 4" :key="index" class="placeholder-line" />
+    </div>
+
+    <div v-else-if="!series.length" class="empty">
       {{ t('history.empty') }}
     </div>
 
@@ -462,5 +472,36 @@ const timeFormat = computed(
   line-height: 1.5;
   padding: 1.6rem 0 1.8rem;
   text-align: center;
+}
+
+.chart-placeholder {
+  position: relative;
+  display: grid;
+  align-content: space-evenly;
+  height: 7.4rem;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+.placeholder-line {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: rgb(255 255 255 / 7%);
+}
+
+.chart-placeholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 10%, rgb(255 255 255 / 5%), transparent 70%);
+  animation: chart-shimmer 1.4s ease-in-out infinite;
+  transform: translateX(-100%);
+}
+
+@keyframes chart-shimmer {
+  to {
+    transform: translateX(100%);
+  }
 }
 </style>

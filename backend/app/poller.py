@@ -100,10 +100,9 @@ class UsagePoller:
             return
 
         try:
-            # Nur so weit zurück, wie auch überbrückt werden dürfte.
-            restored = store.latest_per_provider(
-                max_age_minutes=self._settings.max_bridge_minutes
-            )
+            # Der letzte echte Messwert bleibt als klar markierter Altstand
+            # nützlicher als eine leere Kachel, auch wenn er lange zurückliegt.
+            restored = store.latest_per_provider()
         except Exception:  # pragma: no cover - Start darf daran nie scheitern
             logger.exception("Letzter Stand konnte nicht geladen werden")
             return
@@ -230,47 +229,18 @@ class UsagePoller:
         )
 
     def _bridge(self, failure: ProviderUsage) -> ProviderUsage:
-        """Überbrückt einen Aussetzer mit dem letzten geglückten Abruf.
+        """Zeigt bei einem Aussetzer dauerhaft den letzten echten Abruf.
 
-        Ein einzelner fehlgeschlagener Poll darf keine Kachel leeren, wenn
-        Sekunden vorher gültige Werte da waren. Zwei Grenzen halten das
-        ehrlich:
-
-        * Fenster, deren Reset seither verstrichen ist, fallen weg – ihr Wert
-          wäre nachweislich falsch.
-        * Ab ``max_bridge_minutes`` wird gar nicht mehr überbrückt. Sonst
-          stünde bei dauerhaft kaputtem Token tagelang ein längst überholter
-          Wert des 7-Tage-Fensters in der Kachel, weil dessen Reset noch weit
-          weg ist.
+        Der Wert bleibt mitsamt seinem ursprünglichen Zeitstempel erhalten und
+        ist als ``stale`` markiert. So kann die Oberfläche ihn als historischen
+        Stand darstellen, statt bei einem abgelaufenen Token leer zu werden.
         """
         previous = self._last_good.get(failure.id)
         if previous is None:
             return failure
 
-        moment = now()
-
-        age_minutes = (moment - previous.fetched_at).total_seconds() / 60
-        if age_minutes > self._settings.max_bridge_minutes:
-            logger.info(
-                "%s: gehaltener Wert ist %d Min. alt – wird nicht mehr gezeigt",
-                previous.name,
-                int(age_minutes),
-            )
-            self._last_good.pop(failure.id, None)
-            return failure
-
-        windows = [
-            window
-            for window in previous.windows
-            if window.resets_at is None or window.resets_at > moment
-        ]
-        if not windows:
-            self._last_good.pop(failure.id, None)
-            return failure
-
         return previous.model_copy(
             update={
-                "windows": windows,
                 "stale": True,
                 "warning": failure.message,
                 "retry_after_seconds": failure.retry_after_seconds,

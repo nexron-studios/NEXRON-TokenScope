@@ -16,7 +16,11 @@ const { settings } = useSettings()
 const { t } = useI18n()
 const { usage, health, providers, isDemo, loading, backendError, backendHint, load } =
   useUsage()
-const { history, load: loadHistory } = useHistory()
+const { history, loading: historyLoading, load: loadHistory } = useHistory()
+
+const placeholderCount = computed(
+  () => Object.values(settings.value.enabledProviders).filter(Boolean).length,
+)
 
 /**
  * Die Ansicht hängt am URL-Hash, damit der Kiosk-Browser direkt auf einer
@@ -49,14 +53,15 @@ useEventListener(window, 'hashchange', () => {
 })
 
 const refresh = async () => {
-  await load()
-  await loadHistory(settings.value.historyHours)
+  await Promise.all([load(), loadHistory(settings.value.historyHours)])
 }
 
 /** Der Aktualisieren-Knopf zwingt das Backend zu einem sofortigen Poll. */
 const refreshNow = async () => {
-  await load({ refresh: true })
-  await loadHistory(settings.value.historyHours)
+  await Promise.all([
+    load({ refresh: true }),
+    loadHistory(settings.value.historyHours),
+  ])
 }
 
 const { isAutoRefreshActive } = useUsageRefresh({
@@ -109,6 +114,8 @@ const shellClass = computed(() => ({
       :backend-error="backendError"
       :backend-hint="backendHint"
       :loading="loading"
+      :history-loading="historyLoading"
+      :placeholder-count="placeholderCount"
       :large-text="settings.largeText"
       @retry="refreshNow"
     />

@@ -137,21 +137,17 @@ letzten geglückten Abruf je Anbieter und liefert ihn mit `stale: true` plus
 den Grund in der Fußzeile, die Werte bleiben lesbar.
 
 Der Zustand löst sich von allein: Beim nächsten geglückten Abruf ersetzt der
-frische Wert den gehaltenen, das Abzeichen verschwindet. Damit daraus kein
-falsches Bild wird, greifen drei Grenzen:
+frische Wert den gehaltenen, das Abzeichen verschwindet. Bis dahin bleibt der
+letzte echte Messwert sichtbar – auch über seinen Reset hinaus. Die Oberfläche
+nennt ihn dann ausdrücklich **Letzter Stand** und **Nicht aktuell**, zeigt den
+ursprünglichen Zeitstempel und bezeichnet einen verstrichenen Reset als bereits
+erfolgt. Damit ist der alte Wert nützlich, ohne als aktuelles Kontingent
+missverstanden zu werden.
 
-- Fenster, deren `resets_at` inzwischen verstrichen ist, fallen weg – ihr Wert
-  wäre nachweislich falsch. Bleibt keins übrig, zeigt die Kachel ehrlich nichts.
-- Nach `NEXRON_TOKENSCOPE_MAX_BRIDGE_MINUTES` (Vorgabe 30) wird gar nicht mehr
-  überbrückt. Ohne diese Grenze stünde bei dauerhaft kaputtem Token tagelang
-  ein überholter Wert des 7-Tage-Fensters in der Kachel, weil dessen Reset noch
-  weit weg ist – das kurze 5-Stunden-Fenster räumt sich dagegen selbst ab.
-- Überbrückte Werte werden **nicht** in die Historie geschrieben, sonst würde
-  der Verlauf zu einer erfundenen Geraden.
-
-Beim Start holt sich der Poller den letzten Stand aus SQLite zurück – ebenfalls
-nur innerhalb der Überbrückungsgrenze –, sonst stünde nach jedem Neustart
-wieder eine leere Kachel da.
+Überbrückte Werte werden **nicht** in die Historie geschrieben, sonst würde
+der Verlauf zu einer erfundenen Geraden. Beim Aufräumen bleibt der jeweils
+letzte echte Snapshot pro Anbieter erhalten, sodass er auch nach einem Neustart
+wieder zur Verfügung steht.
 
 Meldet ein Anbieter `429`, pausiert der Dienst genau diesen Anbieter – so lange
 wie `Retry-After` verlangt, sonst 5 Minuten (maximal 30). Stures Weiterpollen
@@ -391,7 +387,7 @@ Alles über Umgebungsvariablen mit dem Präfix `NEXRON_TOKENSCOPE_` oder über
 | `NEXRON_TOKENSCOPE_HOST` / `NEXRON_TOKENSCOPE_PORT` | `127.0.0.1` / `8787` | Bindung. Alles außer Loopback macht die Tokens im Netz nutzbar. |
 | `NEXRON_TOKENSCOPE_POLL_INTERVAL_SECONDS` | `60` | Abstand zwischen zwei Abfragen |
 | `NEXRON_TOKENSCOPE_DEMO_MODE` | `0` | Simulierte Werte ohne Credentials |
-| `NEXRON_TOKENSCOPE_MAX_BRIDGE_MINUTES` | `30` | wie lange ein Wert höchstens „gehalten“ wird |
+| `NEXRON_TOKENSCOPE_MAX_BRIDGE_MINUTES` | `30` | wie frisch ein Codex-Log sein muss, um als aktueller statt letzter Stand zu gelten |
 | `NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` | Anthropic-OAuth-Usage | nachziehbar, wenn sich die Route ändert |
 | `NEXRON_TOKENSCOPE_CODEX_USAGE_URL` | ChatGPT-Backend-Usage | dito |
 | `NEXRON_TOKENSCOPE_CLAUDE_CREDENTIALS_PATH` | `~/.claude/.credentials.json` | abweichender Ort der Anmeldedaten |
@@ -415,7 +411,7 @@ Dieselben Angaben liefert `GET /api/health`.
 | Nach frischem Klon bleiben beide Kacheln leer | Keine CLI angemeldet – es gibt schlicht nichts zu lesen | Claude Code bzw. Codex einmal starten und anmelden. `GET /api/health` zeigt unter `sources`, was gefunden wurde. |
 | `start.ps1` bricht mit *py … nicht gefunden* / *npm … nicht gefunden* ab | Python oder Node fehlen bzw. stehen nicht im `PATH` | Python 3.10+ und Node.js 22+ installieren, Terminal neu öffnen |
 | Kachel zeigt *Token wurde abgelehnt* (`unauthorized`) | Der undokumentierte Usage-Endpunkt lehnt den Token ab und es gibt keine frischen lokalen Kontingentwerte | Claude Code bzw. Codex einmal starten. Frische Codex-`rate_limits` aus einem aktiven Chat werden verwendet; alte Logdaten nicht. |
-| Abzeichen **Gehalten**, Werte stehen still | Der frische Abruf scheiterte, der letzte gültige Wert wird weitergezeigt | Grund steht in der Fußzeile der Kachel. Löst sich beim nächsten geglückten Poll von allein; nach 30 Min. wird auf den Leerzustand umgeschaltet. |
+| Abzeichen **Letzter Stand**, Werte stehen still | Der frische Abruf scheiterte, der letzte gültige Wert wird weitergezeigt | Grund und Zeitpunkt stehen in der Kachel. Löst sich beim nächsten geglückten Poll von allein. |
 | *Anbieter drosselt gerade* (`rate_limited`) | Zu viele Anfragen an den undokumentierten Endpunkt | Der Dienst pausiert automatisch. Dauerhaft: `NEXRON_TOKENSCOPE_POLL_INTERVAL_SECONDS` erhöhen. |
 | *Keine Anmeldedaten gefunden* (`auth_missing`) | Pfad weicht ab, oder die CLI schreibt die Datei gerade neu | Pfad über `NEXRON_TOKENSCOPE_*_PATH` setzen; bei Token-Refresh löst sich das beim nächsten Poll von allein |
 | *Format hat sich geändert* (`unexpected_shape`) | Der undokumentierte Endpunkt liefert neue Feldnamen | URL prüfen; die JSONL-Auswertung läuft davon unberührt weiter |

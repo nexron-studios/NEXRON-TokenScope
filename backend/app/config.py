@@ -37,9 +37,8 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = 10.0
     manual_refresh_min_interval_seconds: float = 5.0
     demo_mode: bool = False
-    # Wie lange ein Anbieter höchstens mit dem letzten guten Wert überbrückt
-    # wird. Danach ist die Zahl zu alt, um noch etwas auszusagen – die Kachel
-    # zeigt dann lieber nichts als etwas Falsches.
+    # Wie frisch ein lokaler Codex-Logeintrag sein muss, um als aktueller Wert
+    # zu gelten. Ältere echte Werte bleiben separat als Altstand sichtbar.
     max_bridge_minutes: float = 30.0
 
     # --- Claude Code ------------------------------------------------------
