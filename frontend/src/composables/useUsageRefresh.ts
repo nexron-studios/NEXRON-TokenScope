@@ -6,6 +6,8 @@ interface RefreshOptions {
   autoRefresh: Ref<boolean>
   intervalSeconds: Ref<number>
   refresh: () => Promise<void>
+  /** Beim Oeffnen einmal wirklich neu pollen; Intervalle lesen den Backend-Cache. */
+  initialRefresh?: () => Promise<void>
 }
 
 export function useUsageRefresh(options: RefreshOptions) {
@@ -31,7 +33,7 @@ export function useUsageRefresh(options: RefreshOptions) {
   watch([options.autoRefresh, visibility], syncInterval)
 
   onMounted(() => {
-    void options.refresh()
+    void (options.initialRefresh ?? options.refresh)()
     syncInterval()
   })
 

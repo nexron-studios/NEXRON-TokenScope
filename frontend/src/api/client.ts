@@ -43,6 +43,9 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   try {
     response = await fetch(`${BASE}${path}`, {
       signal,
+      // TokenScope liefert Live-Daten. Besonders WebView2 darf einen bereits
+      // verwendeten GET wie `/api/usage?refresh=true` nicht wiederverwenden.
+      cache: 'no-store',
       headers: { Accept: 'application/json' },
     })
   } catch (error) {

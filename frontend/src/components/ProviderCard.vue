@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useNow } from "@vueuse/core";
 import ProviderMark from "@/components/ProviderMark.vue";
 import ProviderMascot from "@/components/ProviderMascot.vue";
 import UsageMeter from "@/components/UsageMeter.vue";
@@ -16,6 +17,7 @@ const props = defineProps<{
 }>();
 
 const { language, locale, t } = useI18n();
+const clock = useNow({ interval: 60_000 });
 
 const brand = computed(() => brandOf(props.provider.id));
 const vars = computed(() => brandVars(brand.value));
@@ -64,7 +66,7 @@ const quotaStyle = computed((): Record<string, string> => {
   };
 });
 
-const { countdown, resetDate } = useResetCountdown(
+const { countdown, resetDate, isDue } = useResetCountdown(
   () => primary.value?.resets_at,
 );
 
@@ -116,16 +118,28 @@ const windowLabel = (window: UsageWindow): string => {
 
 const updatedAt = computed(() =>
   new Intl.DateTimeFormat(locale.value, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(props.provider.fetched_at)),
 );
 
-/** Alter der angezeigten Werte in Minuten – nur bei Überbrückung relevant. */
-const staleMinutes = computed(() => {
-  if (!props.provider.stale) return 0;
-  const age = Date.now() - new Date(props.provider.fetched_at).getTime();
-  return Math.max(1, Math.round(age / 60_000));
+/** Laufende relative Angabe: "vor 12 Min.", "vor 2 Std." oder "vor 3 Tagen". */
+const updatedRelative = computed(() => {
+  const fetchedAt = new Date(props.provider.fetched_at).getTime();
+  const ageMinutes = Math.max(0, (clock.value.getTime() - fetchedAt) / 60_000);
+  const formatter = new Intl.RelativeTimeFormat(locale.value, { numeric: "auto" });
+
+  if (ageMinutes < 1) return t("provider.justNow");
+  if (ageMinutes < 60) {
+    return formatter.format(-Math.round(ageMinutes), "minute");
+  }
+  if (ageMinutes < 1_440) {
+    return formatter.format(-Math.round(ageMinutes / 60), "hour");
+  }
+  return formatter.format(-Math.round(ageMinutes / 1_440), "day");
 });
 </script>
 
@@ -157,9 +171,7 @@ const staleMinutes = computed(() => {
         }"
       >
         {{
-          provider.stale
-            ? t("provider.held")
-            : sourceLabel
+          provider.stale ? t("provider.held") : sourceLabel
         }}
       </span>
     </header>
@@ -169,7 +181,9 @@ const staleMinutes = computed(() => {
         <div>
           <p class="eyebrow-row">
             <span class="eyebrow">{{
-              t("provider.available", { label: windowLabel(primary) })
+              t(provider.stale ? "provider.lastKnown" : "provider.available", {
+                label: windowLabel(primary),
+              })
             }}</span>
             <!-- Zustand steht neben der Bezeichnung: Symbol und Wort tragen
                  die Bedeutung, die Farbe verstärkt sie nur. -->
@@ -198,7 +212,7 @@ const staleMinutes = computed(() => {
                   fill="currentColor"
                 />
               </svg>
-              {{ severityLabel }}
+              {{ provider.stale ? t("provider.status.stale") : severityLabel }}
             </span>
           </p>
           <p class="figure" :class="{ 'figure-lg': large }" :style="quotaStyle">
@@ -208,8 +222,12 @@ const staleMinutes = computed(() => {
         </div>
 
         <div class="text-right">
-          <p class="eyebrow">{{ t("provider.reset") }}</p>
-          <p class="countdown">{{ countdown }}</p>
+          <p class="eyebrow">
+            {{ t(provider.stale && isDue ? "provider.resetWas" : "provider.reset") }}
+          </p>
+          <p class="countdown">
+            {{ provider.stale && isDue ? t("provider.expired") : countdown }}
+          </p>
           <p v-if="resetDate" class="footnote">{{ resetDate }}</p>
         </div>
       </div>
@@ -250,14 +268,16 @@ const staleMinutes = computed(() => {
     </div>
 
     <footer class="foot">
-      <span>{{ t("provider.updated", { time: updatedAt }) }}</span>
-      <!-- Das Alter steht schon links im "Stand …" – hier zählt der Grund. -->
+      <span :title="t('provider.updatedExact', { time: updatedAt })">
+        {{ t("provider.updatedAgo", { relative: updatedRelative }) }}
+      </span>
+      <!-- Das Alter steht schon links – hier zählt der Grund. -->
       <span
         v-if="provider.stale"
         class="foot-note"
         :title="
           t('provider.staleTitle', {
-            minutes: staleMinutes,
+            relative: updatedRelative,
             reason:
               language === 'en'
                 ? statusHint || t('provider.fetchFailed')
@@ -367,7 +387,7 @@ const staleMinutes = computed(() => {
   color: var(--brand-accent);
 }
 
-/* Überbrückte Werte: erkennbar, aber nicht alarmierend – sie stimmen ja noch. */
+/* Alte Werte bleiben sichtbar, müssen aber eindeutig als Altstand erkennbar sein. */
 .badge-stale {
   border-color: rgb(250 178 25 / 55%);
   color: #fab219;

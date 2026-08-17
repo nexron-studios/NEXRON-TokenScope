@@ -63,6 +63,9 @@ const { isAutoRefreshActive } = useUsageRefresh({
   autoRefresh: computed(() => settings.value.autoRefresh),
   intervalSeconds: computed(() => settings.value.refreshIntervalSeconds),
   refresh,
+  // Ein Reload der Oberflaeche soll denselben Effekt wie der sichtbare
+  // Aktualisieren-Knopf haben, ohne die periodischen API-Polls zu verdoppeln.
+  initialRefresh: refreshNow,
 })
 
 watch(
