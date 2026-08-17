@@ -37,7 +37,7 @@ cd nexron-TokenScope
 | --- | --- | --- |
 | Wie viel Kontingent ist noch übrig, wann ist Reset? | OAuth-Usage-Endpunkt | undokumentiert, kann sich ändern |
 | Wie viel habe ich diese Woche pro Projekt/Modell verbraucht? | lokale JSONL-Logs | reines Dateisystem, kein Auth, kein Netz |
-| Was, wenn der Endpunkt ausfällt? | letzte `rate_limits` aus den Codex-Rollout-Logs | Momentaufnahme der letzten CLI-Sitzung |
+| Was, wenn der Endpunkt ausfällt? | frische `rate_limits` aus den Codex-Rollout-Logs | aktuelle Momentaufnahme eines aktiven Chats; ältere Werte werden verworfen |
 
 ### Token
 
@@ -414,7 +414,7 @@ Dieselben Angaben liefert `GET /api/health`.
 | --- | --- | --- |
 | Nach frischem Klon bleiben beide Kacheln leer | Keine CLI angemeldet – es gibt schlicht nichts zu lesen | Claude Code bzw. Codex einmal starten und anmelden. `GET /api/health` zeigt unter `sources`, was gefunden wurde. |
 | `start.ps1` bricht mit *py … nicht gefunden* / *npm … nicht gefunden* ab | Python oder Node fehlen bzw. stehen nicht im `PATH` | Python 3.10+ und Node.js 22+ installieren, Terminal neu öffnen |
-| Kachel zeigt *Token wurde abgelehnt* (`unauthorized`) | Access-Token abgelaufen; die jeweilige CLI erneuert ihn nur, während sie läuft | Claude Code bzw. Codex einmal starten oder neu anmelden. Auth-Fehler werden nicht mit alten Logdaten überbrückt. |
+| Kachel zeigt *Token wurde abgelehnt* (`unauthorized`) | Der undokumentierte Usage-Endpunkt lehnt den Token ab und es gibt keine frischen lokalen Kontingentwerte | Claude Code bzw. Codex einmal starten. Frische Codex-`rate_limits` aus einem aktiven Chat werden verwendet; alte Logdaten nicht. |
 | Abzeichen **Gehalten**, Werte stehen still | Der frische Abruf scheiterte, der letzte gültige Wert wird weitergezeigt | Grund steht in der Fußzeile der Kachel. Löst sich beim nächsten geglückten Poll von allein; nach 30 Min. wird auf den Leerzustand umgeschaltet. |
 | *Anbieter drosselt gerade* (`rate_limited`) | Zu viele Anfragen an den undokumentierten Endpunkt | Der Dienst pausiert automatisch. Dauerhaft: `NEXRON_TOKENSCOPE_POLL_INTERVAL_SECONDS` erhöhen. |
 | *Keine Anmeldedaten gefunden* (`auth_missing`) | Pfad weicht ab, oder die CLI schreibt die Datei gerade neu | Pfad über `NEXRON_TOKENSCOPE_*_PATH` setzen; bei Token-Refresh löst sich das beim nächsten Poll von allein |

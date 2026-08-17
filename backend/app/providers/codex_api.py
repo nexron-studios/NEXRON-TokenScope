@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from datetime import timedelta
 from typing import Any
 
 import httpx
@@ -38,9 +39,6 @@ _PLAN_LABELS = {
     "free": "Free",
 }
 
-_AUTH_FAILURES = frozenset({"auth_missing", "auth_expired", "unauthorized"})
-
-
 def _windows_from_rate_limits(block: dict[str, Any]) -> list[UsageWindow]:
     """``{primary: {...}, secondary: {...}}`` → normalisierte Fenster."""
     windows: list[UsageWindow] = []
@@ -75,11 +73,6 @@ class CodexProvider:
     async def fetch(self, client: httpx.AsyncClient) -> ProviderUsage:
         api_result = await self._fetch_api(client)
         if api_result.status == "ok":
-            return api_result
-
-        # Anmeldungsfehler sollen wie bei Claude sichtbar bleiben. Alte
-        # Rollout-Logs würden sonst so aussehen, als sei der Token noch gültig.
-        if api_result.status in _AUTH_FAILURES:
             return api_result
 
         for fallback in (self._fetch_from_logs, self._fetch_from_cli):
@@ -158,6 +151,18 @@ class CodexProvider:
         )
         if not block:
             return None
+
+        # Die Codex-App schreibt bei aktiven Chats aktuelle rate_limits in die
+        # Rollout-Logs. Diese sind ein besserer Nachweis als der undokumentierte
+        # Usage-Endpunkt, der auch mit einem funktionierenden Login 401 liefern
+        # kann. Alte Sitzungen dürfen dagegen keinen scheinbar aktuellen Wert
+        # erzeugen – dann bleibt der eigentliche Auth-Fehler sichtbar.
+        observed_at = parse_timestamp(block.get("_observed_at"))
+        if observed_at is None:
+            return None
+        if now() - observed_at > timedelta(minutes=self._settings.max_bridge_minutes):
+            return None
+
         return self._from_payload({"rate_limits": block}, source="logs")
 
     async def _fetch_from_cli(self) -> ProviderUsage | None:
@@ -209,6 +214,7 @@ class CodexProvider:
             if isinstance(raw_plan, str) and raw_plan
             else None
         )
+        observed_at = parse_timestamp(block.get("_observed_at"))
 
         return ProviderUsage(
             id=self.id,
@@ -217,5 +223,5 @@ class CodexProvider:
             windows=windows,
             source=source,
             status="ok",
-            fetched_at=now(),
+            fetched_at=observed_at if source == "logs" and observed_at else now(),
         )
