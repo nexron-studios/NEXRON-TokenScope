@@ -20,6 +20,8 @@ export type Mood =
 export const LOOPS_PER_CLIP = 3
 
 export interface Clip {
+  /** Ursprünglicher Dateiname, damit einzelne Clips gezielt wählbar sind. */
+  file: string
   src: string
   /**
    * Laufzeit eines Durchlaufs. Ein GIF meldet dem Browser weder Dauer noch
@@ -55,6 +57,7 @@ function resolve(folder: MascotFolder, entries: readonly Entry[]): Clip[] {
     )
     if (!match) continue
     clips.push({
+      file,
       src: match[1],
       seconds,
       kind: file.endsWith('.mp4') ? 'video' : 'gif',
@@ -196,6 +199,18 @@ const CLOUDLING: Record<Mood, readonly Entry[]> = {
 export const MASCOTS: Partial<Record<ProviderId, Reel>> = {
   claude: reelOf('clawd', CLAWD),
   codex: reelOf('cloudling', CLOUDLING),
+}
+
+/** Findet einen Clip unabhängig vom Anbieter und von seiner Laune. */
+export function mascotClip(file: string): Clip | undefined {
+  for (const reel of Object.values(MASCOTS)) {
+    if (!reel) continue
+    for (const clips of Object.values(reel)) {
+      const match = clips?.find((clip) => clip.file === file)
+      if (match) return match
+    }
+  }
+  return undefined
 }
 
 const OFFLINE: ReadonlySet<ProviderStatus> = new Set([

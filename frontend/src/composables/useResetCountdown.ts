@@ -1,12 +1,7 @@
 import { computed, toValue } from 'vue'
 import { useNow } from '@vueuse/core'
+import { useI18n } from '@/composables/useI18n'
 import type { MaybeRefOrGetter } from 'vue'
-
-const DATE_FORMAT = new Intl.DateTimeFormat('de-DE', {
-  weekday: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-})
 
 /**
  * Zählt bis zum nächsten Reset eines Limitfensters herunter.
@@ -17,6 +12,7 @@ export function useResetCountdown(
   resetAt: MaybeRefOrGetter<string | null | undefined>,
 ) {
   const now = useNow({ interval: 1_000 })
+  const { locale, t } = useI18n()
 
   const target = computed(() => {
     const value = toValue(resetAt)
@@ -34,20 +30,26 @@ export function useResetCountdown(
   const countdown = computed(() => {
     const difference = remainingMs.value
     if (difference === undefined) return '–'
-    if (difference <= 0) return 'jetzt'
+    if (difference <= 0) return t('unit.now')
 
     const totalMinutes = Math.ceil(difference / 60_000)
     const days = Math.floor(totalMinutes / 1_440)
     const hours = Math.floor((totalMinutes % 1_440) / 60)
     const minutes = totalMinutes % 60
 
-    if (days > 0) return `${days} T ${hours} Std.`
-    if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')} Std.`
-    return `${minutes} Min.`
+    if (days > 0) return `${days} ${t('unit.dayShort')} ${hours} ${t('unit.hourShort')}`
+    if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')} ${t('unit.hourShort')}`
+    return `${minutes} ${t('unit.minuteShort')}`
   })
 
   const resetDate = computed(() =>
-    target.value ? DATE_FORMAT.format(target.value) : undefined,
+    target.value
+      ? new Intl.DateTimeFormat(locale.value, {
+          weekday: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(target.value)
+      : undefined,
   )
 
   const isDue = computed(

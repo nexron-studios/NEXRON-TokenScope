@@ -7,6 +7,7 @@ import {
   forcedMood,
   LOOPS_PER_CLIP,
   MASCOTS,
+  mascotClip,
   pickClip,
   pickMood,
   remainingOfPrimary,
@@ -19,6 +20,8 @@ const props = defineProps<{
   provider: ProviderUsage
   /** Das Frontend erreicht das eigene Backend nicht. */
   backendDown?: boolean
+  /** Spielt ausschließlich diese Animationsdatei, sofern sie existiert. */
+  forceClip?: string
 }>()
 
 const { settings } = useSettings()
@@ -38,6 +41,9 @@ const now = useNow({ interval: 60_000 })
 const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
 const forced = computed(() => forcedMood(props.provider, props.backendDown === true))
+const fixedClip = computed(() =>
+  props.forceClip ? mascotClip(props.forceClip) : undefined,
+)
 
 /**
  * Es bleibt absichtlich nur ein Medium im DOM. Zwei Ebenen für eine
@@ -111,6 +117,11 @@ const show = (mood: Mood, clip: Clip) => {
 
 /** Würfelt die nächste Laune, oder bleibt bei der erzwungenen. */
 const advance = (into?: Mood) => {
+  if (fixedClip.value) {
+    show('offline', fixedClip.value)
+    return
+  }
+
   const pools = reel.value
   if (!pools) return
 
@@ -223,7 +234,7 @@ const onFailed = (slotToken: number) => {
 }
 
 /** Eine Störung kommt oder geht: sofort umschalten, ohne die Runde abzuwarten. */
-watch(forced, (value) => advance(value))
+watch([forced, fixedClip], ([value]) => advance(value))
 
 onMounted(() => {
   if (!reduceMotion.value) advance(forced.value)

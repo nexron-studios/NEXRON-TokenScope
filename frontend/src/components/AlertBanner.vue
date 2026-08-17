@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n'
+
 defineProps<{
   title: string
   hint?: string
@@ -7,6 +9,8 @@ defineProps<{
 }>()
 
 defineEmits<{ retry: [] }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -35,7 +39,7 @@ defineEmits<{ retry: [] }>()
     </div>
 
     <button type="button" class="retry" :disabled="busy" @click="$emit('retry')">
-      {{ busy ? 'Prüft …' : 'Erneut versuchen' }}
+      {{ busy ? t('alert.checking') : t('alert.retry') }}
     </button>
   </div>
 </template>

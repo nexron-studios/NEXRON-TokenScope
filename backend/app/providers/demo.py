@@ -12,7 +12,7 @@ from ..normalize import clamp_percent, now
 class DemoProvider:
     """Erzeugt plausible Werte ohne Credentials.
 
-    Nur für UI-Arbeit gedacht (``AIUSAGE_DEMO_MODE=1``). Das Frontend
+    Nur für UI-Arbeit gedacht (``NEXRON_TOKENSCOPE_DEMO_MODE=1``). Das Frontend
     kennzeichnet diese Quelle sichtbar als Demo.
     """
 

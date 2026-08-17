@@ -1,8 +1,10 @@
 import { onBeforeUnmount, ref, shallowRef } from 'vue'
 import { api, errorText } from '@/api/client'
 import type { HistoryResponse, LogGroupBy, LogSummary } from '@/api/types'
+import { useI18n } from '@/composables/useI18n'
 
 export function useHistory() {
+  const { t } = useI18n()
   const history = shallowRef<HistoryResponse>()
   const error = ref<string>()
   let controller: AbortController | undefined
@@ -20,7 +22,7 @@ export function useHistory() {
       }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === 'AbortError') return
-      error.value = errorText(caught, 'Verlauf nicht ladbar.')
+      error.value = errorText(caught, t('error.history'))
     }
   }
 
@@ -29,6 +31,7 @@ export function useHistory() {
 }
 
 export function useLogSummary() {
+  const { t } = useI18n()
   const summary = shallowRef<LogSummary>()
   const loading = ref(false)
   const error = ref<string>()
@@ -48,7 +51,7 @@ export function useLogSummary() {
       }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === 'AbortError') return
-      error.value = errorText(caught, 'Logs nicht auswertbar.')
+      error.value = errorText(caught, t('error.logs'))
     } finally {
       if (!current.signal.aborted) loading.value = false
     }

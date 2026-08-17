@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import AlertBanner from '@/components/AlertBanner.vue'
 import ProviderCard from '@/components/ProviderCard.vue'
 import UsageHistoryChart from '@/components/UsageHistoryChart.vue'
+import { useI18n } from '@/composables/useI18n'
 import type { HistoryResponse, ProviderUsage } from '@/api/types'
 
 const props = defineProps<{
@@ -16,6 +17,8 @@ const props = defineProps<{
 }>()
 
 defineEmits<{ retry: [] }>()
+
+const { t } = useI18n()
 
 const visibleIds = computed(() => props.providers.map((provider) => provider.id))
 </script>
@@ -43,7 +46,7 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
     <!-- Steht schon ein Banner oben, wäre dieser Hinweis nur ein zweiter
          Grund für dieselbe leere Fläche. -->
     <p v-else-if="!backendError" class="empty">
-      Kein Anbieter aktiv. In den Einstellungen wieder einschalten.
+      {{ t('dashboard.noProviders') }}
     </p>
 
     <UsageHistoryChart

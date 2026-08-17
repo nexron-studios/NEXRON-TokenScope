@@ -4,6 +4,7 @@ import { useEventListener } from '@vueuse/core'
 import AppHeader from '@/components/AppHeader.vue'
 import type { ViewId } from '@/components/AppHeader.vue'
 import { useHistory } from '@/composables/useHistory'
+import { useI18n } from '@/composables/useI18n'
 import { useSettings } from '@/composables/useSettings'
 import { useUsage } from '@/composables/useUsage'
 import { useUsageRefresh } from '@/composables/useUsageRefresh'
@@ -12,6 +13,7 @@ import LogsView from '@/views/LogsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 
 const { settings } = useSettings()
+const { t } = useI18n()
 const { usage, health, providers, isDemo, loading, backendError, backendHint, load } =
   useUsage()
 const { history, load: loadHistory } = useHistory()
@@ -68,6 +70,14 @@ watch(
   (hours) => void loadHistory(hours),
 )
 
+watch(
+  () => settings.value.language,
+  (language) => {
+    document.documentElement.lang = language
+  },
+  { immediate: true },
+)
+
 const connected = computed(() => !backendError.value && Boolean(usage.value))
 
 const shellClass = computed(() => ({
@@ -105,11 +115,10 @@ const shellClass = computed(() => ({
     <footer class="foot">
       <span>
         <span class="pulse" :class="{ on: isAutoRefreshActive }" />
-        {{ isAutoRefreshActive ? 'Aktualisiert automatisch' : 'Aktualisierung pausiert' }}
+        {{ isAutoRefreshActive ? t('footer.auto') : t('footer.paused') }}
       </span>
       <span>
-        Quellen: lokale CLI-Dateien · Backend pollt alle
-        {{ usage?.poll_interval_seconds ?? 60 }} s
+        {{ t('footer.sources', { seconds: usage?.poll_interval_seconds ?? 60 }) }}
       </span>
     </footer>
   </div>

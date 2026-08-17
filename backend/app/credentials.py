@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import subprocess
 import sys
@@ -94,6 +95,27 @@ def _read_macos_keychain(service: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _jwt_expires_at(token: str) -> datetime | None:
+    """Liest nur den unkritischen ``exp``-Claim aus einem JWT.
+
+    Die Signatur wird hier bewusst nicht als Echtheitsnachweis verwendet; der
+    Server prüft sie beim eigentlichen Request. Für den lokalen Hinweis reicht
+    der Zeitstempel aus dem bereits vorhandenen Token.
+    """
+    try:
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+        encoded = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(encoded))
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+    return parse_timestamp(payload.get("exp"))
+
+
 def load_claude_credential(
     credentials_path: Path,
     keychain_service: str,
@@ -143,5 +165,6 @@ def load_codex_credential(auth_path: Path) -> Credential:
     return Credential(
         access_token=token,
         account_id=str(account_id) if account_id else None,
+        expires_at=_jwt_expires_at(token),
         extras={"auth_mode": payload.get("auth_mode")},
     )

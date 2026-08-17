@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { SEVERITY, severityOf } from '@/theme/brands'
+import { useI18n } from '@/composables/useI18n'
 
 const props = defineProps<{
   /** Verbleibendes Kontingent in Prozent. */
   remaining: number
   label: string
 }>()
+
+const { t } = useI18n()
+const severityLabel = computed(() => t(`provider.status.${severity.value}`))
 
 /**
  * Gefüllt heißt *verfügbar* – wie die große Zahl und die Kopfzeile der
@@ -31,17 +35,17 @@ const fill = computed(() =>
   <div class="meter">
     <div class="meter-head">
       <span class="meter-label">{{ label }}</span>
-      <span class="meter-value">{{ Math.round(value) }} % frei</span>
+      <span class="meter-value">{{ t('provider.free', { value: Math.round(value) }) }}</span>
     </div>
 
     <div
       class="meter-track"
       role="meter"
-      :aria-label="`${label}: ${Math.round(value)} Prozent verfügbar`"
+      :aria-label="`${label}: ${t('provider.freeAria', { value: Math.round(value) })}`"
       aria-valuemin="0"
       aria-valuemax="100"
       :aria-valuenow="Math.round(value)"
-      :aria-valuetext="`${Math.round(value)} Prozent verfügbar, ${SEVERITY[severity].label}`"
+      :aria-valuetext="`${t('provider.freeAria', { value: Math.round(value) })}, ${severityLabel}`"
     >
       <div class="meter-fill" :style="{ width: `${value}%`, background: fill }" />
     </div>

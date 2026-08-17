@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Startet den AI Usage Monitor lokal (Linux/macOS, u. a. Raspberry Pi).
+# Startet NEXRON-TokenScope lokal (Linux/macOS, u. a. Raspberry Pi).
 #
 #   ./start.sh          Backend + gebautes Frontend auf einem Port
 #   ./start.sh --dev    zusaetzlich Vite-Dev-Server mit Hot-Reload auf 5173
@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
 PYTHON="$BACKEND/.venv/bin/python"
-PORT="${AIUSAGE_PORT:-8787}"
+PORT="${NEXRON_TOKENSCOPE_PORT:-8787}"
 
 DEV=0
 KIOSK=0

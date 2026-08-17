@@ -1,7 +1,7 @@
 // Im Release soll kein Konsolenfenster mitlaufen; im Debug ist es nützlich.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-//! Desktop-Hülle für den AI Usage Monitor.
+//! Desktop-Hülle für NEXRON-TokenScope.
 //!
 //! Die Hülle rendert das Frontend nicht selbst: Sie startet bei Bedarf das
 //! FastAPI-Backend und zeigt dessen ausgelieferte Oberfläche
@@ -166,7 +166,7 @@ fn start_and_open(
                 }
             }
             None => {
-                status("Projektordner nicht gefunden – bitte AIUSAGE_ROOT setzen");
+                status("Projektordner nicht gefunden – bitte NEXRON_TOKENSCOPE_ROOT setzen");
                 return;
             }
         }
@@ -231,7 +231,7 @@ fn wait_for_backend(handle: &AppHandle, port: u16) -> Result<(), String> {
 
 fn build_splash(handle: &AppHandle) -> tauri::Result<WebviewWindow> {
     WebviewWindowBuilder::new(handle, "splash", WebviewUrl::App("index.html".into()))
-        .title("AI Usage Monitor")
+        .title("NEXRON-TokenScope")
         .inner_size(SPLASH_SIZE.0, SPLASH_SIZE.1)
         .resizable(false)
         .center()
@@ -247,7 +247,7 @@ fn build_main_window(
     let parsed = tauri::Url::parse(url).map_err(|err| err.to_string())?;
 
     let window = WebviewWindowBuilder::new(handle, "main", WebviewUrl::External(parsed))
-        .title("AI Usage Monitor")
+        .title("NEXRON-TokenScope")
         .inner_size(1280.0, 800.0)
         .always_on_top(options.always_on_top)
         .visible(false)

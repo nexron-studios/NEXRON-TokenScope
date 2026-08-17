@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Startet den AI Usage Monitor lokal.
+    Startet NEXRON-TokenScope lokal.
 
 .DESCRIPTION
     Richtet beim ersten Lauf alles selbst ein (venv, npm-Pakete, Frontend-Build)
@@ -51,7 +51,7 @@ $python = Join-Path $backend '.venv\Scripts\python.exe'
 $requirements = Join-Path $backend 'requirements.txt'
 
 $desktopSrc = Join-Path $root 'desktop\src-tauri'
-$desktopExe = Join-Path $desktopSrc 'target\release\ai-usage-desktop.exe'
+$desktopExe = Join-Path $desktopSrc 'target\release\nexron-tokenscope-desktop.exe'
 
 function Write-Step($text) {
     Write-Host "==> $text" -ForegroundColor Cyan

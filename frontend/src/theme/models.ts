@@ -20,13 +20,13 @@ const version = (parts: string[]) => parts.join('.')
 
 const isNumber = (part: string) => /^\d+(\.\d+)*$/.test(part)
 
-export function modelLabel(raw: string): string {
+export function modelLabel(raw: string, language: 'de' | 'en' = 'de'): string {
   const id = raw.trim().toLowerCase()
   if (!id) return raw
 
   // Claude schreibt lokal erzeugte Nachrichten ohne echtes Modell.
-  if (id === '<synthetic>') return 'Synthetisch'
-  if (id === 'unbekannt') return 'Unbekannt'
+  if (id === '<synthetic>') return language === 'en' ? 'Synthetic' : 'Synthetisch'
+  if (id === 'unbekannt') return language === 'en' ? 'Unknown' : 'Unbekannt'
 
   // Datumsstempel am Ende tragen nichts zur Unterscheidung bei.
   const parts = id.replace(/-\d{8}$/, '').split('-')

@@ -38,6 +38,8 @@ _PLAN_LABELS = {
     "free": "Free",
 }
 
+_AUTH_FAILURES = frozenset({"auth_missing", "auth_expired", "unauthorized"})
+
 
 def _windows_from_rate_limits(block: dict[str, Any]) -> list[UsageWindow]:
     """``{primary: {...}, secondary: {...}}`` → normalisierte Fenster."""
@@ -75,6 +77,11 @@ class CodexProvider:
         if api_result.status == "ok":
             return api_result
 
+        # Anmeldungsfehler sollen wie bei Claude sichtbar bleiben. Alte
+        # Rollout-Logs würden sonst so aussehen, als sei der Token noch gültig.
+        if api_result.status in _AUTH_FAILURES:
+            return api_result
+
         for fallback in (self._fetch_from_logs, self._fetch_from_cli):
             result = await fallback()
             if result is not None and result.status == "ok":
@@ -92,6 +99,14 @@ class CodexProvider:
             credential = load_codex_credential(settings.codex_auth_path)
         except CredentialError as exc:
             return build_error(self.id, self.name, exc.kind, str(exc))
+
+        if credential.is_expired:
+            return build_error(
+                self.id,
+                self.name,
+                "auth_expired",
+                "Token abgelaufen. Codex öffnen oder erneut anmelden.",
+            )
 
         headers = {
             "Authorization": f"Bearer {credential.access_token}",

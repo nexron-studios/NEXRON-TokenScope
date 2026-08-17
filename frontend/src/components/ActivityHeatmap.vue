@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import type { ActivityCell } from '@/api/types'
 
 const props = defineProps<{ cells: ActivityCell[]; compact: Intl.NumberFormat }>()
 
-const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+const { language, t } = useI18n()
+
+const weekdays = computed(() =>
+  language.value === 'en'
+    ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    : ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+)
 /** Nur jede zweite Zeile wird beschriftet – sieben Kürzel wären eine Wand. */
 const LABELLED = [0, 2, 4, 6]
 const HOUR_TICKS = [0, 6, 12, 18]
@@ -47,7 +54,7 @@ const colorOf = (tokens: number) => {
 }
 
 const rows = computed(() =>
-  WEEKDAYS.map((label, weekday) => ({
+  weekdays.value.map((label, weekday) => ({
     label,
     weekday,
     labelled: LABELLED.includes(weekday),
@@ -59,8 +66,13 @@ const rows = computed(() =>
         tokens,
         color: colorOf(tokens),
         title: cell
-          ? `${label} ${hour} Uhr · ${cell.messages} Nachrichten · ${props.compact.format(tokens)} Token`
-          : `${label} ${hour} Uhr · keine Sitzung`,
+          ? t('heat.cell', {
+              day: label,
+              hour,
+              messages: cell.messages,
+              tokens: props.compact.format(tokens),
+            })
+          : t('heat.emptyCell', { day: label, hour }),
       }
     }),
   })),
@@ -75,19 +87,22 @@ const busiest = computed(() =>
 
 const summary = computed(() =>
   busiest.value
-    ? `Wochenraster der Sitzungen. Am meisten los: ${WEEKDAYS[busiest.value.weekday]} gegen ${busiest.value.hour} Uhr.`
-    : 'Wochenraster der Sitzungen – noch nichts erfasst.',
+    ? t('heat.summary', {
+        day: weekdays.value[busiest.value.weekday] ?? '',
+        hour: busiest.value.hour,
+      })
+    : t('heat.emptySummary'),
 )
 </script>
 
 <template>
   <figure class="heat">
     <figcaption class="head">
-      <span class="title">Wochenraster · Stunde für Stunde</span>
+      <span class="title">{{ t('heat.title') }}</span>
       <span class="legend" aria-hidden="true">
-        weniger
+        {{ t('heat.less') }}
         <i v-for="color in RAMP" :key="color" :style="{ background: color }" />
-        mehr
+        {{ t('heat.more') }}
       </span>
     </figcaption>
 
@@ -115,7 +130,7 @@ const summary = computed(() =>
         class="tick"
         :style="{ gridColumn: `${2 + index * 6} / span 6` }"
       >
-        {{ hour }} Uhr
+        {{ language === 'en' ? `${hour}:00` : `${hour} Uhr` }}
       </span>
     </div>
   </figure>

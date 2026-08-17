@@ -4,6 +4,7 @@ import ProviderMark from '@/components/ProviderMark.vue'
 import TouchSegmented from '@/components/TouchSegmented.vue'
 import TouchToggle from '@/components/TouchToggle.vue'
 import { useSettings } from '@/composables/useSettings'
+import { useI18n } from '@/composables/useI18n'
 import { BRANDS } from '@/theme/brands'
 import type { HealthResponse, ProviderId } from '@/api/types'
 
@@ -11,15 +12,16 @@ const props = defineProps<{ health?: HealthResponse }>()
 const emit = defineEmits<{ changed: [] }>()
 
 const { settings, resetSettings } = useSettings()
+const { language, locale, t } = useI18n()
 
 type Section = 'anzeige' | 'daten' | 'dienst'
 const section = ref<Section>('anzeige')
 
-const SECTIONS: Array<{ id: Section; label: string; hint: string }> = [
-  { id: 'anzeige', label: 'Anzeige', hint: 'Panel & Lesbarkeit' },
-  { id: 'daten', label: 'Daten', hint: 'Intervall & Zeiträume' },
-  { id: 'dienst', label: 'Dienst', hint: 'Quellen & Diagnose' },
-]
+const sections = computed<Array<{ id: Section; label: string; hint: string }>>(() => [
+  { id: 'anzeige', label: t('settings.section.display'), hint: t('settings.section.displayHint') },
+  { id: 'daten', label: t('settings.section.data'), hint: t('settings.section.dataHint') },
+  { id: 'dienst', label: t('settings.section.service'), hint: t('settings.section.serviceHint') },
+])
 
 const INTERVALS = [
   { value: 30, label: '30 s' },
@@ -28,20 +30,28 @@ const INTERVALS = [
   { value: 900, label: '15 min' },
 ]
 
-const RANGES = [
-  { value: 6, label: '6 Std.' },
-  { value: 24, label: '24 Std.' },
-  { value: 72, label: '3 T' },
-  { value: 168, label: '7 T' },
+const ranges = computed(() => [
+  { value: 6, label: `6 ${t('unit.hourShort')}` },
+  { value: 24, label: `24 ${t('unit.hourShort')}` },
+  { value: 72, label: `3 ${t('unit.dayShort')}` },
+  { value: 168, label: `7 ${t('unit.dayShort')}` },
+])
+
+const LANGUAGES = [
+  { value: 'de', label: 'DE' },
+  { value: 'en', label: 'EN' },
 ]
 
 const PROVIDERS: ProviderId[] = ['claude', 'codex']
 
-const SOURCE_LABELS: Record<string, string> = {
-  claude_credentials: 'Claude · Credentials',
-  claude_logs: 'Claude · Sitzungslogs',
-  codex_credentials: 'Codex · auth.json',
-  codex_logs: 'Codex · Rollout-Logs',
+const sourceLabel = (key: string) => {
+  const labels: Record<string, string> = {
+    claude_credentials: 'Claude · Credentials',
+    claude_logs: `Claude · ${language.value === 'en' ? 'session logs' : 'Sitzungslogs'}`,
+    codex_credentials: 'Codex · auth.json',
+    codex_logs: 'Codex · Rollout-Logs',
+  }
+  return labels[key] ?? key
 }
 
 const resetPending = ref(false)
@@ -58,8 +68,8 @@ const handleReset = () => {
 
 const lastPoll = computed(() => {
   const value = props.health?.last_poll_at
-  if (!value) return 'noch nie'
-  return new Intl.DateTimeFormat('de-DE', {
+  if (!value) return t('settings.never')
+  return new Intl.DateTimeFormat(locale.value, {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -71,9 +81,9 @@ const lastPoll = computed(() => {
   <main class="view">
     <!-- Vertikale Leiste statt Tab-Reihe: Auf 1024 × 600 bleibt so rechts
          voller Platz für die Bedienelemente, ohne dass gescrollt wird. -->
-    <nav class="rail" aria-label="Einstellungsbereiche">
+    <nav class="rail" :aria-label="t('settings.aria')">
       <button
-        v-for="entry in SECTIONS"
+        v-for="entry in sections"
         :key="entry.id"
         type="button"
         class="rail-item"
@@ -92,8 +102,8 @@ const lastPoll = computed(() => {
         @click="handleReset"
         @blur="resetPending = false"
       >
-        <span class="rail-label">{{ resetPending ? 'Wirklich?' : 'Zurücksetzen' }}</span>
-        <span class="rail-hint">Nur lokale Anzeigeoptionen</span>
+        <span class="rail-label">{{ resetPending ? t('settings.confirm') : t('settings.reset') }}</span>
+        <span class="rail-hint">{{ t('settings.localOnly') }}</span>
       </button>
     </nav>
 
@@ -102,23 +112,28 @@ const lastPoll = computed(() => {
         <div class="stack">
           <TouchToggle
             v-model="settings.largeText"
-            label="Große Schrift"
-            hint="Kennzahlen aus zwei Metern Abstand ablesbar"
+            :label="t('settings.largeText')"
+            :hint="t('settings.largeTextHint')"
           />
           <TouchToggle
             v-model="settings.kioskMode"
-            label="Kiosk-Modus"
-            hint="Mauszeiger aus, keine Hover-Zustände"
+            :label="t('settings.kiosk')"
+            :hint="t('settings.kioskHint')"
           />
           <TouchToggle
             v-model="settings.nightMode"
-            label="Nachtmodus"
-            hint="Dimmt das Panel, ohne die Hintergrundbeleuchtung zu ändern"
+            :label="t('settings.night')"
+            :hint="t('settings.nightHint')"
+          />
+          <TouchSegmented
+            v-model="settings.language"
+            :label="t('settings.language')"
+            :options="LANGUAGES"
           />
         </div>
 
         <div class="stack">
-          <p class="caption">Sichtbare Anbieter</p>
+          <p class="caption">{{ t('settings.providers') }}</p>
           <button
             v-for="id in PROVIDERS"
             :key="id"
@@ -132,7 +147,7 @@ const lastPoll = computed(() => {
             <ProviderMark class="chip" :provider="id" :size="22" />
             <span class="provider-name">{{ BRANDS[id].name }}</span>
             <span class="provider-state">
-              {{ settings.enabledProviders[id] ? 'sichtbar' : 'aus' }}
+              {{ settings.enabledProviders[id] ? t('settings.visible') : t('settings.off') }}
             </span>
           </button>
         </div>
@@ -142,12 +157,12 @@ const lastPoll = computed(() => {
         <div class="stack">
           <TouchToggle
             v-model="settings.autoRefresh"
-            label="Automatisch aktualisieren"
-            hint="Das Backend pollt unabhängig davon weiter"
+            :label="t('settings.auto')"
+            :hint="t('settings.autoHint')"
           />
           <TouchSegmented
             v-model="settings.refreshIntervalSeconds"
-            label="Abholintervall"
+            :label="t('settings.interval')"
             :options="INTERVALS"
           />
         </div>
@@ -155,44 +170,43 @@ const lastPoll = computed(() => {
         <div class="stack">
           <TouchSegmented
             v-model="settings.historyHours"
-            label="Verlauf im Dashboard"
-            :options="RANGES"
+            :label="t('settings.history')"
+            :options="ranges"
           />
           <p class="note">
-            Der Verlauf kommt aus der lokalen SQLite-Datei. Jeder Poll schreibt
-            einen Punkt; die Daten verlassen das Gerät nicht.
+            {{ t('settings.historyNote') }}
           </p>
         </div>
       </template>
 
       <template v-else>
         <div class="stack">
-          <p class="caption">Gefundene Quellen</p>
+          <p class="caption">{{ t('settings.sources') }}</p>
           <ul class="sources">
             <li v-for="(available, key) in health?.sources ?? {}" :key="key">
               <span class="dot" :class="available ? 'on' : 'off'" />
-              {{ SOURCE_LABELS[key] ?? key }}
-              <span class="source-state">{{ available ? 'vorhanden' : 'fehlt' }}</span>
+              {{ sourceLabel(key) }}
+              <span class="source-state">{{ available ? t('settings.present') : t('settings.missing') }}</span>
             </li>
           </ul>
         </div>
 
         <div class="stack">
           <dl class="facts">
-            <div><dt>Letzter Poll</dt><dd>{{ lastPoll }}</dd></div>
+            <div><dt>{{ t('settings.lastPoll') }}</dt><dd>{{ lastPoll }}</dd></div>
             <div>
-              <dt>Backend</dt>
-              <dd>{{ health ? `v${health.version}` : 'nicht erreichbar' }}</dd>
+              <dt>{{ t('settings.backend') }}</dt>
+              <dd>{{ health ? `v${health.version}` : t('settings.unreachable') }}</dd>
             </div>
             <div>
-              <dt>Bindung</dt>
+              <dt>{{ t('settings.binding') }}</dt>
               <dd :class="{ warn: health && !health.loopback_only }">
-                {{ health?.loopback_only === false ? 'im Netz erreichbar' : 'nur localhost' }}
+                {{ health?.loopback_only === false ? t('settings.network') : t('settings.localhost') }}
               </dd>
             </div>
             <div>
-              <dt>Verlauf</dt>
-              <dd>{{ health?.history_enabled ? 'SQLite aktiv' : 'nur Cache' }}</dd>
+              <dt>{{ t('settings.historyFact') }}</dt>
+              <dd>{{ health?.history_enabled ? t('settings.sqlite') : t('settings.cache') }}</dd>
             </div>
           </dl>
 
@@ -200,8 +214,7 @@ const lastPoll = computed(() => {
             {{ health.last_poll_error }}
           </p>
           <p class="note">
-            Tokens werden bei jedem Poll frisch aus den CLI-Dateien gelesen und
-            nie gespeichert, geloggt oder an das Frontend gegeben.
+            {{ t('settings.tokenNote') }}
           </p>
         </div>
       </template>

@@ -1,4 +1,4 @@
-# AI Usage Monitor
+# NEXRON-TokenScope
 
 Lokales Dashboard für die verbleibenden Kontingente von **Claude Code** und
 **Codex**. Ein kleiner FastAPI-Dienst liest die Daten aus den Dateien, die
@@ -26,8 +26,8 @@ OAuth-Usage-Endpunkte      ~/.claude/projects/**.jsonl      ~/.codex/sessions/**
 **Schnellstart** – Voraussetzungen und Details unter [Loslegen](#loslegen):
 
 ```bash
-git clone https://github.com/addictedsociety/ai_usage.git
-cd ai_usage
+git clone https://github.com/nexron-studios/nexron-TokenScope.git
+cd nexron-TokenScope
 ./start.sh        # Windows: .\start.ps1
 ```
 
@@ -54,10 +54,10 @@ Bei **jedem** Poll frisch eingelesen, weil die CLIs sie laufend erneuern:
 - **Codex:** `GET https://chatgpt.com/backend-api/codex/usage`
   mit `Authorization: Bearer …` und `chatgpt-account-id: …`
 
-Beide URLs sind über `AIUSAGE_CLAUDE_USAGE_URL` bzw. `AIUSAGE_CODEX_USAGE_URL`
+Beide URLs sind über `NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` bzw. `NEXRON_TOKENSCOPE_CODEX_USAGE_URL`
 konfigurierbar – ändert ein Anbieter seine Route, reicht eine Zeile in der
 `.env` statt eines Code-Umbaus. Optional lässt sich `npx codex-check --json`
-als zweiter Notnagel aktivieren (`AIUSAGE_CODEX_CLI_FALLBACK=1`).
+als zweiter Notnagel aktivieren (`NEXRON_TOKENSCOPE_CODEX_CLI_FALLBACK=1`).
 
 ### Was JSONL hier bringt
 
@@ -142,7 +142,7 @@ falsches Bild wird, greifen drei Grenzen:
 
 - Fenster, deren `resets_at` inzwischen verstrichen ist, fallen weg – ihr Wert
   wäre nachweislich falsch. Bleibt keins übrig, zeigt die Kachel ehrlich nichts.
-- Nach `AIUSAGE_MAX_BRIDGE_MINUTES` (Vorgabe 30) wird gar nicht mehr
+- Nach `NEXRON_TOKENSCOPE_MAX_BRIDGE_MINUTES` (Vorgabe 30) wird gar nicht mehr
   überbrückt. Ohne diese Grenze stünde bei dauerhaft kaputtem Token tagelang
   ein überholter Wert des 7-Tage-Fensters in der Kachel, weil dessen Reset noch
   weit weg ist – das kurze 5-Stunden-Fenster räumt sich dagegen selbst ab.
@@ -184,13 +184,13 @@ Anmeldedaten und Sitzungslogs, die die CLIs ohnehin auf der Platte ablegen.
 Ohne mindestens eine angemeldete CLI bleiben die Kacheln deshalb leer – zum
 Ansehen gibt es den [Demo-Modus](#nur-ansehen-ohne-anmeldedaten). Beide
 Anbieter sind optional; wer nur eine CLI nutzt, schaltet die andere über
-`AIUSAGE_CODEX_ENABLED=0` bzw. `AIUSAGE_CLAUDE_ENABLED=0` ab.
+`NEXRON_TOKENSCOPE_CODEX_ENABLED=0` bzw. `NEXRON_TOKENSCOPE_CLAUDE_ENABLED=0` ab.
 
 ### Holen und starten
 
 ```bash
-git clone https://github.com/addictedsociety/ai_usage.git
-cd ai_usage
+git clone https://github.com/nexron-studios/nexron-TokenScope.git
+cd nexron-TokenScope
 ```
 
 ```powershell
@@ -212,7 +212,7 @@ sich, sobald der Dienst antwortet. Später baut es nur neu, wenn sich unter
 | --- | --- |
 | `-Dev` / `--dev` | zusätzlich Vite-Dev-Server mit Hot-Reload auf Port 5173 |
 | `-NoBrowser` | Browser nicht automatisch öffnen |
-| `-Port 9000` / `AIUSAGE_PORT=9000` | anderer Port |
+| `-Port 9000` / `NEXRON_TOKENSCOPE_PORT=9000` | anderer Port |
 | `-Desktop` (nur `start.ps1`) | statt im Browser im eigenen Fenster im Vollbild |
 | `-Monitor smallest` / `4` / `DISPLAY4` (nur `start.ps1`) | auf welchem Bildschirm das Fenster aufgeht |
 | `-ListMonitors` (nur `start.ps1`) | zeigt die Bildschirme mit ihrer Nummer |
@@ -232,17 +232,17 @@ curl http://127.0.0.1:8787/api/health
 
 `sources` zeigt, welche der vier Quellen gefunden wurden. Steht dort überall
 `false`, hat der Dienst die CLI-Dateien nicht gefunden – dann helfen die
-`AIUSAGE_*_PATH`-Variablen aus der [Konfiguration](#konfiguration). Dieselbe
+`NEXRON_TOKENSCOPE_*_PATH`-Variablen aus der [Konfiguration](#konfiguration). Dieselbe
 Übersicht steht in der Oberfläche unter **Einstellungen → Dienst**.
 
 ### Nur ansehen, ohne Anmeldedaten
 
 ```bash
-AIUSAGE_DEMO_MODE=1 ./start.sh
+NEXRON_TOKENSCOPE_DEMO_MODE=1 ./start.sh
 ```
 
 ```powershell
-$env:AIUSAGE_DEMO_MODE = 1; .\start.ps1
+$env:NEXRON_TOKENSCOPE_DEMO_MODE = 1; .\start.ps1
 ```
 
 Die Werte sind dann simuliert und in der Oberfläche sichtbar als **Demo**
@@ -287,7 +287,7 @@ braucht.
 ### Desktop-Fenster auf einem eigenen Bildschirm
 
 Für den Dauerbetrieb auf einem freien Monitor gibt es unter
-[`desktop/`](desktop/) **AI Usage Monitor by NEXRON**, eine schlanke
+[`desktop/`](desktop/) **NEXRON-TokenScope**, eine schlanke
 [Tauri](https://tauri.app)-Hülle. Sie rendert nichts eigenes: Sie startet bei
 Bedarf das Backend und zeigt dessen Oberfläche im Vollbild an. Damit bleibt
 alles gleichursprünglich – am Frontend musste dafür nichts geändert werden.
@@ -321,12 +321,12 @@ zweiten zu starten.
 <details>
 <summary>Ohne Skript starten – etwa aus einer Verknüpfung auf dem Desktop</summary>
 
-Eine Verknüpfung auf `ai-usage-desktop.exe` mit dem Argument
+Eine Verknüpfung auf `nexron-tokenscope-desktop.exe` mit dem Argument
 `--monitor smallest` und dem Projektordner als Arbeitsverzeichnis genügt; im
 Autostart-Ordner startet das Ganze mit Windows.
 
 Die gebaute Datei liegt unter
-`desktop\src-tauri\target\release\ai-usage-desktop.exe`. Ohne laufendes Backend
+`desktop\src-tauri\target\release\nexron-tokenscope-desktop.exe`. Ohne laufendes Backend
 startet sie es selbst aus der venv des Projekts, wartet auf den Port und zeigt
 so lange einen Splash. Ein selbst gestartetes Backend endet mit dem Fenster –
 auch wenn die App abstürzt oder im Taskmanager abgeschossen wird. Ein Installer
@@ -338,16 +338,16 @@ ausführen; die Verknüpfung zeigt immer den zuletzt erzeugten `frontend/dist`.
 
 | Argument | Umgebungsvariable | Wirkung |
 | --- | --- | --- |
-| `--monitor smallest` / `4` / `DISPLAY4` | `AIUSAGE_DESKTOP_MONITOR` | Bildschirm über Fläche, Nummer oder Gerätename |
-| `--port 9000` | `AIUSAGE_PORT` | Port des Backends |
-| `--windowed` | `AIUSAGE_DESKTOP_WINDOWED=1` | normales Fenster statt Vollbild |
-| `--on-top` | `AIUSAGE_DESKTOP_ON_TOP=1` | immer im Vordergrund |
-| `--root <Pfad>` | `AIUSAGE_ROOT` | Projektordner, falls er nicht gefunden wird |
+| `--monitor smallest` / `4` / `DISPLAY4` | `NEXRON_TOKENSCOPE_DESKTOP_MONITOR` | Bildschirm über Fläche, Nummer oder Gerätename |
+| `--port 9000` | `NEXRON_TOKENSCOPE_PORT` | Port des Backends |
+| `--windowed` | `NEXRON_TOKENSCOPE_DESKTOP_WINDOWED=1` | normales Fenster statt Vollbild |
+| `--on-top` | `NEXRON_TOKENSCOPE_DESKTOP_ON_TOP=1` | immer im Vordergrund |
+| `--root <Pfad>` | `NEXRON_TOKENSCOPE_ROOT` | Projektordner, falls er nicht gefunden wird |
 | `--no-backend` | – | kein eigenes Backend starten, nur verbinden |
 | `--list-monitors` | – | nur die erkannten Bildschirme anzeigen |
 
 Weil das Fenster keine Konsole hat, schreibt es seinen Startverlauf nach
-`%LOCALAPPDATA%\com.nexron.ai-usage-monitor\logs\desktop.log`.
+`%LOCALAPPDATA%\com.nexron.tokenscope\logs\desktop.log`.
 
 </details>
 
@@ -362,47 +362,47 @@ Weil das Fenster keine Konsole hat, schreibt es seinen Startverlauf nach
 
 ```ini
 [Unit]
-Description=AI Usage Monitor (lokal)
+Description=NEXRON-TokenScope (lokal)
 After=network.target
 
 [Service]
 User=pi
-WorkingDirectory=/home/pi/ai_usage
-ExecStart=/home/pi/ai_usage/start.sh
+WorkingDirectory=/home/pi/nexron-TokenScope
+ExecStart=/home/pi/nexron-TokenScope/start.sh
 Restart=on-failure
 
 [Install]
 WantedBy=default.target
 ```
 
-Ablegen unter `~/.config/systemd/user/ai-usage.service`, dann
-`systemctl --user enable --now ai-usage`.
+Ablegen unter `~/.config/systemd/user/nexron-tokenscope.service`, dann
+`systemctl --user enable --now nexron-tokenscope`.
 
 </details>
 
 ## Konfiguration
 
-Alles über Umgebungsvariablen mit dem Präfix `AIUSAGE_` oder über
+Alles über Umgebungsvariablen mit dem Präfix `NEXRON_TOKENSCOPE_` oder über
 `backend/.env` (Vorlage: [`backend/.env.example`](backend/.env.example)).
 **Keine Tokens eintragen** – die kommen bei jedem Poll aus den CLI-Dateien.
 
 | Variable | Vorgabe | Zweck |
 | --- | --- | --- |
-| `AIUSAGE_HOST` / `AIUSAGE_PORT` | `127.0.0.1` / `8787` | Bindung. Alles außer Loopback macht die Tokens im Netz nutzbar. |
-| `AIUSAGE_POLL_INTERVAL_SECONDS` | `60` | Abstand zwischen zwei Abfragen |
-| `AIUSAGE_DEMO_MODE` | `0` | Simulierte Werte ohne Credentials |
-| `AIUSAGE_MAX_BRIDGE_MINUTES` | `30` | wie lange ein Wert höchstens „gehalten“ wird |
-| `AIUSAGE_CLAUDE_USAGE_URL` | Anthropic-OAuth-Usage | nachziehbar, wenn sich die Route ändert |
-| `AIUSAGE_CODEX_USAGE_URL` | ChatGPT-Backend-Usage | dito |
-| `AIUSAGE_CLAUDE_CREDENTIALS_PATH` | `~/.claude/.credentials.json` | abweichender Ort der Anmeldedaten |
-| `AIUSAGE_CODEX_AUTH_PATH` | `~/.codex/auth.json` | dito |
-| `AIUSAGE_CLAUDE_PROJECTS_DIR` | `~/.claude/projects` | Wurzel der Sitzungslogs |
-| `AIUSAGE_CODEX_SESSIONS_DIR` | `~/.codex/sessions` | dito |
-| `AIUSAGE_CODEX_LOG_FALLBACK` | `1` | `rate_limits` aus den Rollout-Logs, wenn die API schweigt |
-| `AIUSAGE_CODEX_CLI_FALLBACK` | `0` | zusätzlich `npx codex-check --json` versuchen |
-| `AIUSAGE_HISTORY_ENABLED` | `1` | Snapshots nach SQLite schreiben |
-| `AIUSAGE_HISTORY_RETENTION_DAYS` | `90` | ältere Snapshots werden täglich entfernt |
-| `AIUSAGE_CLAUDE_ENABLED` / `AIUSAGE_CODEX_ENABLED` | `1` | Anbieter serverseitig abschalten |
+| `NEXRON_TOKENSCOPE_HOST` / `NEXRON_TOKENSCOPE_PORT` | `127.0.0.1` / `8787` | Bindung. Alles außer Loopback macht die Tokens im Netz nutzbar. |
+| `NEXRON_TOKENSCOPE_POLL_INTERVAL_SECONDS` | `60` | Abstand zwischen zwei Abfragen |
+| `NEXRON_TOKENSCOPE_DEMO_MODE` | `0` | Simulierte Werte ohne Credentials |
+| `NEXRON_TOKENSCOPE_MAX_BRIDGE_MINUTES` | `30` | wie lange ein Wert höchstens „gehalten“ wird |
+| `NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` | Anthropic-OAuth-Usage | nachziehbar, wenn sich die Route ändert |
+| `NEXRON_TOKENSCOPE_CODEX_USAGE_URL` | ChatGPT-Backend-Usage | dito |
+| `NEXRON_TOKENSCOPE_CLAUDE_CREDENTIALS_PATH` | `~/.claude/.credentials.json` | abweichender Ort der Anmeldedaten |
+| `NEXRON_TOKENSCOPE_CODEX_AUTH_PATH` | `~/.codex/auth.json` | dito |
+| `NEXRON_TOKENSCOPE_CLAUDE_PROJECTS_DIR` | `~/.claude/projects` | Wurzel der Sitzungslogs |
+| `NEXRON_TOKENSCOPE_CODEX_SESSIONS_DIR` | `~/.codex/sessions` | dito |
+| `NEXRON_TOKENSCOPE_CODEX_LOG_FALLBACK` | `1` | `rate_limits` aus den Rollout-Logs, wenn die API schweigt |
+| `NEXRON_TOKENSCOPE_CODEX_CLI_FALLBACK` | `0` | zusätzlich `npx codex-check --json` versuchen |
+| `NEXRON_TOKENSCOPE_HISTORY_ENABLED` | `1` | Snapshots nach SQLite schreiben |
+| `NEXRON_TOKENSCOPE_HISTORY_RETENTION_DAYS` | `90` | ältere Snapshots werden täglich entfernt |
+| `NEXRON_TOKENSCOPE_CLAUDE_ENABLED` / `NEXRON_TOKENSCOPE_CODEX_ENABLED` | `1` | Anbieter serverseitig abschalten |
 
 ## Wenn etwas nicht geht
 
@@ -414,12 +414,12 @@ Dieselben Angaben liefert `GET /api/health`.
 | --- | --- | --- |
 | Nach frischem Klon bleiben beide Kacheln leer | Keine CLI angemeldet – es gibt schlicht nichts zu lesen | Claude Code bzw. Codex einmal starten und anmelden. `GET /api/health` zeigt unter `sources`, was gefunden wurde. |
 | `start.ps1` bricht mit *py … nicht gefunden* / *npm … nicht gefunden* ab | Python oder Node fehlen bzw. stehen nicht im `PATH` | Python 3.10+ und Node.js 22+ installieren, Terminal neu öffnen |
-| Kachel zeigt *Token wurde abgelehnt* (`unauthorized`) | Access-Token abgelaufen; die CLI erneuert ihn nur, während sie läuft | CLI einmal starten bzw. neu anmelden. Codex überbrückt das über die Rollout-Logs. |
+| Kachel zeigt *Token wurde abgelehnt* (`unauthorized`) | Access-Token abgelaufen; die jeweilige CLI erneuert ihn nur, während sie läuft | Claude Code bzw. Codex einmal starten oder neu anmelden. Auth-Fehler werden nicht mit alten Logdaten überbrückt. |
 | Abzeichen **Gehalten**, Werte stehen still | Der frische Abruf scheiterte, der letzte gültige Wert wird weitergezeigt | Grund steht in der Fußzeile der Kachel. Löst sich beim nächsten geglückten Poll von allein; nach 30 Min. wird auf den Leerzustand umgeschaltet. |
-| *Anbieter drosselt gerade* (`rate_limited`) | Zu viele Anfragen an den undokumentierten Endpunkt | Der Dienst pausiert automatisch. Dauerhaft: `AIUSAGE_POLL_INTERVAL_SECONDS` erhöhen. |
-| *Keine Anmeldedaten gefunden* (`auth_missing`) | Pfad weicht ab, oder die CLI schreibt die Datei gerade neu | Pfad über `AIUSAGE_*_PATH` setzen; bei Token-Refresh löst sich das beim nächsten Poll von allein |
+| *Anbieter drosselt gerade* (`rate_limited`) | Zu viele Anfragen an den undokumentierten Endpunkt | Der Dienst pausiert automatisch. Dauerhaft: `NEXRON_TOKENSCOPE_POLL_INTERVAL_SECONDS` erhöhen. |
+| *Keine Anmeldedaten gefunden* (`auth_missing`) | Pfad weicht ab, oder die CLI schreibt die Datei gerade neu | Pfad über `NEXRON_TOKENSCOPE_*_PATH` setzen; bei Token-Refresh löst sich das beim nächsten Poll von allein |
 | *Format hat sich geändert* (`unexpected_shape`) | Der undokumentierte Endpunkt liefert neue Feldnamen | URL prüfen; die JSONL-Auswertung läuft davon unberührt weiter |
-| Verlaufschart bleibt leer | Es gibt noch keine Snapshots | Füllt sich mit jedem Poll; `AIUSAGE_HISTORY_ENABLED=1` prüfen |
+| Verlaufschart bleibt leer | Es gibt noch keine Snapshots | Füllt sich mit jedem Poll; `NEXRON_TOKENSCOPE_HISTORY_ENABLED=1` prüfen |
 | Frontend meldet *Kein Backend erreichbar* | Backend läuft nicht oder auf anderem Port | Backend starten; im Dev-Betrieb `VITE_BACKEND_URL` setzen. Der Knopf **Erneut versuchen** im Banner prüft sofort nach |
 
 ## Oberfläche
@@ -525,8 +525,8 @@ Drei Ansichten:
 ![Einstellungen mit vertikaler Bereichsleiste](docs/screenshots/einstellungen.png)
 
 Projektnamen werden über beide Quellen hinweg vereinheitlicht: Claude legt
-Ordner mit slugifiziertem Pfad an (`c--me-dev-projects-ai-usage`), Codex nennt
-das echte Arbeitsverzeichnis (`ai_usage`) – ohne Normalisierung stünde
+Ordner mit slugifiziertem Pfad an (`c--me-dev-projects-nexron-tokenscope`), Codex nennt
+das echte Arbeitsverzeichnis (`nexron-TokenScope`) – ohne Normalisierung stünde
 dasselbe Projekt zweimal unterschiedlich in der Auswertung.
 
 ### Was die Verbrauchsansicht beantwortet
@@ -579,14 +579,15 @@ aber eine ehrliche: Gerechnet wird mit der Gesamtsumme inklusive Cache-Lesungen
 - `backend/data/` (SQLite-Snapshots) und `.env` sind gitignored. Die
   Snapshots enthalten nur Prozentwerte und Zeitstempel.
 - Das Frontend speichert ausschließlich Anzeigeoptionen unter
-  `ai-usage-monitor:settings` im Local Storage.
+  `nexron-tokenscope:settings` im Local Storage. Bestehende Einstellungen
+  werden einmalig vom früheren Key übernommen.
 
 ## Struktur
 
 ```text
 backend/
 ├── app/
-│   ├── config.py           Einstellungen (AIUSAGE_*)
+│   ├── config.py           Einstellungen (NEXRON_TOKENSCOPE_*)
 │   ├── credentials.py      Token frisch einlesen, redigiert
 │   ├── normalize.py        toleranter Parser für unbekannte Feldnamen
 │   ├── models.py           gemeinsames Schema

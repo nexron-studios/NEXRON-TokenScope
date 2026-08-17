@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
-import { useElementSize } from '@vueuse/core'
+import { useElementSize, useNow } from '@vueuse/core'
 import { brandOf } from '@/theme/brands'
+import { useI18n } from '@/composables/useI18n'
 import type { HistoryResponse, ProviderId } from '@/api/types'
 
 const props = defineProps<{
@@ -10,6 +11,8 @@ const props = defineProps<{
   visibleProviders: ProviderId[]
 }>()
 
+const { language, locale, t } = useI18n()
+
 const SURFACE = '#16161a'
 const PAD = { top: 12, right: 60, bottom: 20, left: 34 }
 // Bewusst flach: Auf 1024 × 600 gehört die Höhe den beiden Kacheln.
@@ -17,6 +20,7 @@ const HEIGHT = 118
 
 const wrapper = useTemplateRef<HTMLElement>('wrapper')
 const { width } = useElementSize(wrapper)
+const chartNow = useNow({ interval: 60_000 })
 const chartWidth = computed(() => Math.max(320, width.value || 640))
 
 interface Point {
@@ -61,13 +65,21 @@ const series = computed<Series[]>(() => {
     if (!last) continue
 
     const brand = brandOf(entry.provider)
+    const labels: Record<string, string> = {
+      five_hour: '5 hours',
+      seven_day: '7 days',
+      seven_day_opus: '7 days · Opus',
+      seven_day_oauth_apps: '7 days · Apps',
+      monthly: '30 days',
+      primary: entry.label === '7 Tage' ? '7 days' : entry.label,
+    }
     chosen.set(entry.provider, {
       rank: entryRank,
       series: {
         provider: entry.provider,
         short: brand.short,
         color: brand.series,
-        label: entry.label,
+        label: language.value === 'en' ? labels[entry.window_key] ?? entry.label : entry.label,
         points,
         last,
       },
@@ -90,7 +102,7 @@ const tableRows = computed(() => {
 })
 
 const domain = computed(() => {
-  const end = Date.now()
+  const end = chartNow.value.getTime()
   const start = end - props.hours * 3_600_000
   return { start, end }
 })
@@ -106,10 +118,23 @@ const scaleY = (used: number) => {
   return PAD.top + (1 - Math.min(100, Math.max(0, used)) / 100) * inner
 }
 
-const pathOf = (entry: Series) =>
-  entry.points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'}${scaleX(point.t).toFixed(1)} ${scaleY(point.used).toFixed(1)}`)
-    .join(' ')
+/**
+ * Snapshots sind Zustände, keine einzelnen Ereignisse. Deshalb bleibt jeder
+ * Wert bis zum nächsten Snapshot konstant. Vor dem ersten gespeicherten
+ * Messpunkt liegt die Linie bei 0 %; der letzte bekannte Zustand reicht bis
+ * „Jetzt“.
+ */
+const pathOf = (entry: Series) => {
+  const { start, end } = domain.value
+  const first = entry.points[0]
+  if (!first) return ''
+
+  let path = `M${scaleX(start).toFixed(1)} ${scaleY(0).toFixed(1)}`
+  for (const point of entry.points) {
+    path += ` H${scaleX(point.t).toFixed(1)} V${scaleY(point.used).toFixed(1)}`
+  }
+  return `${path} H${scaleX(end).toFixed(1)}`
+}
 
 const gridValues = [0, 25, 50, 75, 100]
 
@@ -117,7 +142,7 @@ const timeTicks = computed(() => {
   const { start, end } = domain.value
   const stepHours =
     props.hours <= 6 ? 2 : props.hours <= 24 ? 6 : props.hours <= 72 ? 12 : 24
-  const format = new Intl.DateTimeFormat('de-DE', {
+  const format = new Intl.DateTimeFormat(locale.value, {
     hour: '2-digit',
     minute: '2-digit',
     ...(props.hours > 48 ? { weekday: 'short' } : {}),
@@ -142,7 +167,7 @@ const timeTicks = computed(() => {
   // Kein Zahlenlabel direkt neben „Jetzt“ quetschen.
   const last = ticks.at(-1)
   if (last && end - last.t < stepHours * 3_600_000 * 0.4) ticks.pop()
-  ticks.push({ t: end, label: 'Jetzt' })
+  ticks.push({ t: end, label: t('history.now') })
   return ticks
 })
 
@@ -166,35 +191,38 @@ const readout = computed(() => {
   if (cursorT.value === undefined) return undefined
   const at = cursorT.value
 
-  const tolerance = (props.hours * 3_600_000) / 12
   const rows = series.value
     .map((entry) => {
-      let nearest = entry.last
+      const first = entry.points[0] ?? entry.last
+      let nearest = at < first.t ? { t: at, used: 0 } : first
       for (const point of entry.points) {
-        if (Math.abs(point.t - at) < Math.abs(nearest.t - at)) nearest = point
+        if (point.t <= at) nearest = point
+        else break
       }
       return { entry, point: nearest }
     })
-    .filter((row) => Math.abs(row.point.t - at) < tolerance)
 
   if (!rows.length) return undefined
   return { x: scaleX(at), at, rows }
 })
 
-const timeFormat = new Intl.DateTimeFormat('de-DE', {
-  day: '2-digit',
-  month: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-})
+const timeFormat = computed(
+  () =>
+    new Intl.DateTimeFormat(locale.value, {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+)
 </script>
 
 <template>
   <section ref="wrapper" class="panel">
     <div class="panel-head">
       <div>
-        <h2 class="panel-title">Verlauf</h2>
-        <p class="panel-sub">Verbrauch des kürzesten Fensters, aus lokalen Snapshots</p>
+        <h2 class="panel-title">{{ t('history.title') }}</h2>
+        <p class="panel-sub">{{ t('history.subtitle') }}</p>
       </div>
 
       <ul v-if="series.length" class="legend">
@@ -206,8 +234,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
     </div>
 
     <div v-if="!series.length" class="empty">
-      Noch keine Snapshots. Das Backend schreibt bei jedem Poll einen Punkt –
-      der Verlauf füllt sich von allein.
+      {{ t('history.empty') }}
     </div>
 
     <svg
@@ -217,7 +244,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
       :height="HEIGHT"
       :viewBox="`0 0 ${chartWidth} ${HEIGHT}`"
       role="img"
-      aria-label="Verbrauchsverlauf je Anbieter"
+      :aria-label="t('history.aria')"
       @pointermove="onPointer"
       @pointerdown="onPointer"
       @pointerleave="cursorT = undefined"
@@ -265,7 +292,7 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
       <g v-for="entry in series" :key="entry.provider">
         <path :d="pathOf(entry)" fill="none" :stroke="entry.color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
         <circle
-          :cx="scaleX(entry.last.t)"
+          :cx="scaleX(domain.end)"
           :cy="scaleY(entry.last.used)"
           r="4"
           :fill="entry.color"
@@ -308,9 +335,9 @@ const timeFormat = new Intl.DateTimeFormat('de-DE', {
 
     <!-- Tabellenansicht derselben Daten für Screenreader und Export. -->
     <table v-if="series.length" class="sr-only">
-      <caption>Verbrauch in Prozent je Anbieter und Zeitpunkt</caption>
+      <caption>{{ t('history.caption') }}</caption>
       <thead>
-        <tr><th>Zeitpunkt</th><th v-for="entry in series" :key="entry.provider">{{ entry.short }}</th></tr>
+        <tr><th>{{ t('history.time') }}</th><th v-for="entry in series" :key="entry.provider">{{ entry.short }}</th></tr>
       </thead>
       <tbody>
         <tr v-for="row in tableRows" :key="row.t">

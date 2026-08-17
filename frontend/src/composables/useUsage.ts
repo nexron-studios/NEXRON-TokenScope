@@ -2,6 +2,7 @@ import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { api, ApiError } from '@/api/client'
 import type { HealthResponse, UsageResponse } from '@/api/types'
 import { useSettings } from '@/composables/useSettings'
+import { useI18n } from '@/composables/useI18n'
 
 /**
  * Holt den Zustand ausschließlich vom lokalen Backend. Das Frontend spricht
@@ -9,6 +10,7 @@ import { useSettings } from '@/composables/useSettings'
  */
 export function useUsage() {
   const { settings } = useSettings()
+  const { t } = useI18n()
 
   const usage = shallowRef<UsageResponse>()
   const health = shallowRef<HealthResponse>()
@@ -44,10 +46,10 @@ export function useUsage() {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
       const known = error instanceof ApiError
-      backendError.value = known ? error.message : 'Unerwarteter Fehler beim Laden'
+      backendError.value = known ? error.message : t('error.unexpectedLoad')
       backendHint.value = known
         ? error.hint
-        : 'Der Grund ließ sich nicht bestimmen. Ein erneuter Versuch hilft oft.'
+        : t('error.unexpectedHint')
     } finally {
       if (!current.signal.aborted) loading.value = false
     }

@@ -54,19 +54,19 @@ impl Options {
     pub fn from_env_and_args() -> Self {
         let mut options = Self::default();
 
-        if let Some(port) = env_number("AIUSAGE_PORT") {
+        if let Some(port) = env_number("NEXRON_TOKENSCOPE_PORT") {
             options.port = port as u16;
         }
-        if let Ok(monitor) = std::env::var("AIUSAGE_DESKTOP_MONITOR") {
+        if let Ok(monitor) = std::env::var("NEXRON_TOKENSCOPE_DESKTOP_MONITOR") {
             options.set_monitor(&monitor);
         }
-        if env_flag("AIUSAGE_DESKTOP_WINDOWED") {
+        if env_flag("NEXRON_TOKENSCOPE_DESKTOP_WINDOWED") {
             options.fullscreen = false;
         }
-        if env_flag("AIUSAGE_DESKTOP_ON_TOP") {
+        if env_flag("NEXRON_TOKENSCOPE_DESKTOP_ON_TOP") {
             options.always_on_top = true;
         }
-        if let Ok(root) = std::env::var("AIUSAGE_ROOT") {
+        if let Ok(root) = std::env::var("NEXRON_TOKENSCOPE_ROOT") {
             if !root.is_empty() {
                 options.root = Some(PathBuf::from(root));
             }

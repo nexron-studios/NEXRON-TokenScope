@@ -13,12 +13,12 @@ REPO_ROOT = BACKEND_ROOT.parent
 class Settings(BaseSettings):
     """Konfiguration des lokalen Dienstes.
 
-    Alle Werte lassen sich über Umgebungsvariablen mit dem Präfix ``AIUSAGE_``
-    oder über ``backend/.env`` überschreiben.
+    Alle Werte lassen sich über Umgebungsvariablen mit dem Präfix
+    ``NEXRON_TOKENSCOPE_`` oder über ``backend/.env`` überschreiben.
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="AIUSAGE_",
+        env_prefix="NEXRON_TOKENSCOPE_",
         env_file=BACKEND_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",

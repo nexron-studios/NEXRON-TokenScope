@@ -5,6 +5,7 @@ import type {
   LogSummary,
   UsageResponse,
 } from '@/api/types'
+import { useI18n } from '@/composables/useI18n'
 
 /**
  * Basis-URL des lokalen Backends. Im Dev-Betrieb proxyt Vite `/api`,
@@ -37,6 +38,7 @@ export function errorText(caught: unknown, fallback: string): string {
 
 async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   let response: Response
+  const { t } = useI18n()
 
   try {
     response = await fetch(`${BASE}${path}`, {
@@ -46,17 +48,17 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
     throw new ApiError(
-      'Kein Backend erreichbar',
+      t('error.noBackend'),
       undefined,
-      'Der lokale Dienst auf Port 8787 antwortet nicht – mit start.ps1 bzw. start.sh starten.',
+      t('error.noBackendHint'),
     )
   }
 
   if (!response.ok) {
     throw new ApiError(
-      `Backend meldet HTTP ${response.status}`,
+      t('error.http', { status: response.status }),
       response.status,
-      'Der Dienst läuft, lehnt die Anfrage aber ab. Details stehen im Backend-Log.',
+      t('error.httpHint'),
     )
   }
 
@@ -64,9 +66,9 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
     return (await response.json()) as T
   } catch {
     throw new ApiError(
-      'Ungültige Antwort vom Backend',
+      t('error.invalid'),
       undefined,
-      'Es kam kein gültiges JSON zurück. Läuft auf Port 8787 wirklich ai_usage?',
+      t('error.invalidHint'),
     )
   }
 }

@@ -29,7 +29,7 @@ const { countdown, resetDate } = useResetCountdown(toRef(props, 'resetAt'))
     <div class="min-w-0">
       <p class="truncate text-xs font-semibold text-slate-50">{{ countdown }}</p>
       <p v-if="resetDate" class="mt-0.5 text-[11px] font-semibold text-slate-300">
-        {{ resetDate }} Uhr
+        {{ resetDate }}
       </p>
     </div>
   </div>

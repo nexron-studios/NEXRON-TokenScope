@@ -4,39 +4,46 @@ import ActivityHeatmap from '@/components/ActivityHeatmap.vue'
 import TouchSegmented from '@/components/TouchSegmented.vue'
 import { useLogSummary } from '@/composables/useHistory'
 import { useSettings } from '@/composables/useSettings'
+import { useI18n } from '@/composables/useI18n'
 import { brandOf } from '@/theme/brands'
 import { modelLabel } from '@/theme/models'
 import type { LogGroupBy, TokenTotals } from '@/api/types'
 
 const { settings } = useSettings()
+const { language, locale, t } = useI18n()
 const { summary, loading, error, load } = useLogSummary()
 
 // Der Segmented Control arbeitet mit `string | number`; die Verengung auf
 // LogGroupBy passiert beim Laden.
 const groupBy = ref<string>('project')
 
-const GROUPS: Array<{ value: LogGroupBy; label: string }> = [
-  { value: 'project', label: 'Projekt' },
-  { value: 'model', label: 'Modell' },
-  { value: 'day', label: 'Tag' },
-]
+const groups = computed<Array<{ value: LogGroupBy; label: string }>>(() => [
+  { value: 'project', label: t('logs.project') },
+  { value: 'model', label: t('logs.model') },
+  { value: 'day', label: t('logs.day') },
+])
 
-const DAY_OPTIONS = [
-  { value: 7, label: '7 T' },
-  { value: 30, label: '30 T' },
-  { value: 90, label: '90 T' },
-]
+const dayOptions = computed(() => [
+  { value: 7, label: `7 ${t('unit.dayShort')}` },
+  { value: 30, label: `30 ${t('unit.dayShort')}` },
+  { value: 90, label: `90 ${t('unit.dayShort')}` },
+])
 
 const reload = () =>
   void load(settings.value.logDays, groupBy.value as LogGroupBy)
 onMounted(reload)
 watch([groupBy, () => settings.value.logDays], reload)
 
-const compact = new Intl.NumberFormat('de-DE', {
-  notation: 'compact',
-  maximumFractionDigits: 1,
-})
-const decimal = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 })
+const compact = computed(
+  () =>
+    new Intl.NumberFormat(locale.value, {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }),
+)
+const decimal = computed(
+  () => new Intl.NumberFormat(locale.value, { maximumFractionDigits: 1 }),
+)
 
 const totalOf = (totals: TokenTotals) =>
   totals.input_tokens +
@@ -70,45 +77,45 @@ const tiles = computed<Tile[]>(() => {
   if (!data || !summary.value) return []
 
   return [
-    { key: 'sessions', label: 'Sitzungen', value: decimal.format(data.sessions) },
-    { key: 'messages', label: 'Nachrichten', value: decimal.format(data.messages) },
+    { key: 'sessions', label: t('logs.sessions'), value: decimal.value.format(data.sessions) },
+    { key: 'messages', label: t('logs.messages'), value: decimal.value.format(data.messages) },
     {
       key: 'tokens',
-      label: 'Token gesamt',
-      value: compact.format(totalOf(summary.value.totals)),
-      hint: 'Cache eingerechnet',
+      label: t('logs.totalTokens'),
+      value: compact.value.format(totalOf(summary.value.totals)),
+      hint: t('logs.cacheIncluded'),
     },
     {
       key: 'days',
-      label: 'Aktive Tage',
-      value: decimal.format(data.active_days),
-      hint: `von ${days}`,
+      label: t('logs.activeDays'),
+      value: decimal.value.format(data.active_days),
+      hint: t('logs.ofDays', { days }),
     },
     {
       key: 'streak',
-      label: 'Aktuelle Serie',
-      value: `${decimal.format(data.current_streak)} T`,
-      hint: 'Tage am Stück',
+      label: t('logs.currentStreak'),
+      value: `${decimal.value.format(data.current_streak)} ${t('unit.dayShort')}`,
+      hint: t('logs.daysInRow'),
     },
     {
       key: 'longest',
-      label: 'Längste Serie',
-      value: `${decimal.format(data.longest_streak)} T`,
-      hint: 'im Zeitraum',
+      label: t('logs.longestStreak'),
+      value: `${decimal.value.format(data.longest_streak)} ${t('unit.dayShort')}`,
+      hint: t('logs.inRange'),
     },
     {
       key: 'peak',
-      label: 'Spitzenstunde',
-      value: data.peak_hour === null ? '–' : `${data.peak_hour} Uhr`,
-      hint: 'meiste Nachrichten',
+      label: t('logs.peakHour'),
+      value: data.peak_hour === null ? '–' : `${data.peak_hour}:00`,
+      hint: t('logs.mostMessages'),
     },
     {
       key: 'model',
-      label: 'Top-Modell',
-      value: data.top_model ? modelLabel(data.top_model) : '–',
+      label: t('logs.topModel'),
+      value: data.top_model ? modelLabel(data.top_model, language.value) : '–',
       title: data.top_model ?? undefined,
       hint: data.top_model
-        ? `${Math.round((data.top_model_messages / Math.max(1, data.messages)) * 100)} % der Nachrichten`
+        ? t('logs.messageShare', { percent: Math.round((data.top_model_messages / Math.max(1, data.messages)) * 100) })
         : undefined,
     },
   ]
@@ -124,18 +131,16 @@ interface Work {
   name: string
 }
 
-const SMALLEST_WORK: Work = { tokens: 25_000, name: 'Der kleine Prinz' }
-
-const WORKS: Work[] = [
-  SMALLEST_WORK,
+const works = computed<Work[]>(() => [
+  { tokens: 25_000, name: language.value === 'en' ? 'The Little Prince' : 'Der kleine Prinz' },
   { tokens: 45_000, name: 'Faust I' },
-  { tokens: 120_000, name: 'Harry Potter und der Stein der Weisen' },
+  { tokens: 120_000, name: language.value === 'en' ? "Harry Potter and the Philosopher's Stone" : 'Harry Potter und der Stein der Weisen' },
   { tokens: 290_000, name: 'Moby-Dick' },
-  { tokens: 750_000, name: 'Der Herr der Ringe' },
-  { tokens: 1_000_000, name: 'die Bibel' },
-  { tokens: 1_500_000, name: 'die Harry-Potter-Reihe' },
-  { tokens: 60_000_000, name: 'die Encyclopædia Britannica' },
-]
+  { tokens: 750_000, name: language.value === 'en' ? 'The Lord of the Rings' : 'Der Herr der Ringe' },
+  { tokens: 1_000_000, name: language.value === 'en' ? 'the Bible' : 'die Bibel' },
+  { tokens: 1_500_000, name: language.value === 'en' ? 'the Harry Potter series' : 'die Harry-Potter-Reihe' },
+  { tokens: 60_000_000, name: language.value === 'en' ? 'Encyclopædia Britannica' : 'die Encyclopædia Britannica' },
+])
 
 /**
  * Drei abgeleitete Werte, die in keiner Kachel stehen: Sie brauchen den
@@ -151,9 +156,9 @@ const facts = computed(() => {
   const cacheShare = total ? (summary.value.totals.cache_read_tokens / total) * 100 : 0
 
   return [
-    { key: 'session', label: 'Nachrichten je Sitzung', value: decimal.format(perSession) },
-    { key: 'day', label: 'Token je aktivem Tag', value: compact.format(perDay) },
-    { key: 'cache', label: 'davon aus dem Cache', value: `${Math.round(cacheShare)} %` },
+    { key: 'session', label: t('logs.messagesPerSession'), value: decimal.value.format(perSession) },
+    { key: 'day', label: t('logs.tokensPerDay'), value: compact.value.format(perDay) },
+    { key: 'cache', label: t('logs.fromCache'), value: `${Math.round(cacheShare)} %` },
   ]
 })
 
@@ -162,20 +167,21 @@ const comparison = computed(() => {
   if (total <= 0) return null
 
   const work =
-    [...WORKS].reverse().find((entry) => total >= entry.tokens) ?? SMALLEST_WORK
+    [...works.value].reverse().find((entry) => total >= entry.tokens) ?? works.value[0]
+  if (!work) return null
   const factor = total / work.tokens
-  return `Das ist rund ${decimal.format(factor)}× so viel Text wie ${work.name}.`
+  return t('logs.comparison', { factor: decimal.value.format(factor), work: work.name })
 })
 </script>
 
 <template>
   <main class="view">
     <div class="controls">
-      <TouchSegmented v-model="groupBy" label="Gruppierung" :options="GROUPS" />
+      <TouchSegmented v-model="groupBy" :label="t('logs.grouping')" :options="groups" />
       <TouchSegmented
         v-model="settings.logDays"
-        label="Zeitraum"
-        :options="DAY_OPTIONS"
+        :label="t('logs.range')"
+        :options="dayOptions"
       />
     </div>
 
@@ -205,7 +211,7 @@ const comparison = computed(() => {
         <p
           v-if="comparison"
           class="comparison"
-          title="Token gesamt, Cache eingerechnet – gelesener Kontext zählt mit."
+          :title="t('logs.comparisonTitle')"
         >
           {{ comparison }}
         </p>
@@ -214,21 +220,18 @@ const comparison = computed(() => {
       <section class="panel">
         <header class="panel-head">
           <div>
-            <h2 class="panel-title">Token aus lokalen JSONL-Logs</h2>
-            <p class="panel-sub">
-              Reines Dateisystem – kein Token, kein Netz, keine API, die sich ändern kann.
-            </p>
+            <h2 class="panel-title">{{ t('logs.title') }}</h2>
+            <p class="panel-sub">{{ t('logs.subtitle') }}</p>
           </div>
           <p v-if="summary" class="meta">
-            {{ summary.scanned_files }} Dateien ·
-            {{ compact.format(totalOf(summary.totals)) }} Token
+            {{ t('logs.files', { count: summary.scanned_files, tokens: compact.format(totalOf(summary.totals)) }) }}
           </p>
         </header>
 
         <p v-if="error" class="state error">{{ error }}</p>
-        <p v-else-if="loading && !summary" class="state">Lese Sitzungsdateien …</p>
+        <p v-else-if="loading && !summary" class="state">{{ t('logs.loading') }}</p>
         <p v-else-if="summary && !summary.buckets.length" class="state">
-          Für diesen Zeitraum liegen keine Sitzungen vor.
+          {{ t('logs.empty') }}
         </p>
 
         <!-- Alle Gruppen, nicht nur die ersten paar: auf einem grossen Schirm
@@ -238,7 +241,7 @@ const comparison = computed(() => {
             <div class="row-head">
               <span class="row-name" :title="bucket.label">
                 <span class="swatch" :style="{ background: brandOf(bucket.provider).series }" />
-                {{ summary.group_by === 'model' ? modelLabel(bucket.label) : bucket.label }}
+                {{ summary.group_by === 'model' ? modelLabel(bucket.label, language) : bucket.label }}
               </span>
               <span class="row-value">{{ compact.format(totalOf(bucket.totals)) }}</span>
             </div>
@@ -252,8 +255,11 @@ const comparison = computed(() => {
               />
             </div>
             <p class="row-meta">
-              {{ brandOf(bucket.provider).short }} · {{ bucket.messages }} Nachrichten ·
-              {{ compact.format(bucket.totals.cache_read_tokens) }} aus Cache
+              {{ t('logs.rowMeta', {
+                provider: brandOf(bucket.provider).short,
+                messages: bucket.messages,
+                cache: compact.format(bucket.totals.cache_read_tokens),
+              }) }}
             </p>
           </li>
         </ul>

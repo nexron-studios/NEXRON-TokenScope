@@ -74,7 +74,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
 
     app = FastAPI(
-        title="AI Usage Monitor",
+        title="NEXRON-TokenScope",
         description=(
             "Lokaler Dienst, der die Kontingente von Claude Code und Codex "
             "aus den Dateien der jeweiligen CLI liest und normalisiert ausliefert."

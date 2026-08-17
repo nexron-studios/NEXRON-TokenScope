@@ -14,7 +14,7 @@ from .storage import SnapshotStore
 
 logger = logging.getLogger(__name__)
 
-_USER_AGENT = "ai-usage-monitor/0.2 (local dashboard)"
+_USER_AGENT = "nexron-tokenscope/0.2 (local dashboard)"
 
 #: Wartezeit, wenn der Anbieter drosselt, aber kein `Retry-After` mitschickt.
 DEFAULT_RATE_LIMIT_COOLDOWN = 300.0

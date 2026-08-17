@@ -4,8 +4,9 @@ import ProviderMark from "@/components/ProviderMark.vue";
 import ProviderMascot from "@/components/ProviderMascot.vue";
 import UsageMeter from "@/components/UsageMeter.vue";
 import { useResetCountdown } from "@/composables/useResetCountdown";
+import { useI18n } from "@/composables/useI18n";
 import { brandOf, brandVars, SEVERITY, severityOf } from "@/theme/brands";
-import type { ProviderUsage } from "@/api/types";
+import type { ProviderUsage, UsageWindow } from "@/api/types";
 
 const props = defineProps<{
   provider: ProviderUsage;
@@ -13,6 +14,8 @@ const props = defineProps<{
   /** Das Frontend erreicht sein Backend nicht – der Begleiter zeigt es mit. */
   backendDown?: boolean;
 }>();
+
+const { language, locale, t } = useI18n();
 
 const brand = computed(() => brandOf(props.provider.id));
 const vars = computed(() => brandVars(brand.value));
@@ -65,28 +68,54 @@ const { countdown, resetDate } = useResetCountdown(
   () => primary.value?.resets_at,
 );
 
-const SOURCE_LABELS: Record<string, string> = {
-  api: "Live-API",
-  logs: "Aus CLI-Logs",
-  cli: "codex-check",
-  demo: "Demo",
-  none: "Keine Quelle",
-};
+const sourceLabel = computed(() =>
+  t(`provider.source.${props.provider.source}`),
+);
 
-const STATUS_HINTS: Record<string, string> = {
-  auth_missing: "Keine Anmeldedaten gefunden. Melde dich in der CLI an.",
-  auth_expired: "Token abgelaufen – die CLI erneuert ihn beim nächsten Start.",
-  unauthorized: "Token wurde abgelehnt. In der CLI neu anmelden.",
-  rate_limited:
-    "Anbieter drosselt gerade. Der Dienst versucht es später erneut.",
-  unreachable: "Endpunkt nicht erreichbar.",
-  unexpected_shape: "Antwortformat hat sich geändert.",
-  disabled: "Anbieter ist im Backend deaktiviert.",
-  error: "Unerwarteter Fehler.",
+const statusHint = computed(() =>
+  props.provider.status === "ok"
+    ? undefined
+    : t(`provider.error.${props.provider.status}`),
+);
+
+const emptyMessage = computed(() =>
+  language.value === "en"
+    ? statusHint.value || props.provider.message || t("provider.noData")
+    : props.provider.message || statusHint.value || t("provider.noData"),
+);
+
+const severityLabel = computed(() =>
+  t(`provider.status.${severity.value}`),
+);
+
+const windowLabel = (window: UsageWindow): string => {
+  if (language.value === "de") return window.label;
+
+  const known: Record<string, string> = {
+    five_hour: "5 hours",
+    seven_day: "7 days",
+    seven_day_opus: "7 days · Opus",
+    seven_day_oauth_apps: "7 days · Apps",
+    monthly: "30 days",
+  };
+  const knownLabel = known[window.key];
+  if (knownLabel !== undefined) return knownLabel;
+
+  const minutes = window.window_minutes;
+  if (!minutes) return window.label;
+  if (minutes % 1440 === 0) {
+    const days = minutes / 1440;
+    return `${days} ${days === 1 ? "day" : "days"}`;
+  }
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  }
+  return `${minutes} minutes`;
 };
 
 const updatedAt = computed(() =>
-  new Intl.DateTimeFormat("de-DE", {
+  new Intl.DateTimeFormat(locale.value, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(props.provider.fetched_at)),
@@ -112,7 +141,11 @@ const staleMinutes = computed(() => {
         <div class="min-w-0">
           <h2 class="wordmark">{{ provider.name }}</h2>
           <p class="subline">
-            {{ provider.plan ? `${provider.plan}-Tarif` : "Tarif unbekannt" }}
+            {{
+              provider.plan
+                ? t("provider.plan", { plan: provider.plan })
+                : t("provider.planUnknown")
+            }}
           </p>
         </div>
       </div>
@@ -125,8 +158,8 @@ const staleMinutes = computed(() => {
       >
         {{
           provider.stale
-            ? "Gehalten"
-            : (SOURCE_LABELS[provider.source] ?? provider.source)
+            ? t("provider.held")
+            : sourceLabel
         }}
       </span>
     </header>
@@ -135,7 +168,9 @@ const staleMinutes = computed(() => {
       <div class="flex items-end justify-between gap-4">
         <div>
           <p class="eyebrow-row">
-            <span class="eyebrow">Verfügbar · {{ primary.label }}</span>
+            <span class="eyebrow">{{
+              t("provider.available", { label: windowLabel(primary) })
+            }}</span>
             <!-- Zustand steht neben der Bezeichnung: Symbol und Wort tragen
                  die Bedeutung, die Farbe verstärkt sie nur. -->
             <span
@@ -163,7 +198,7 @@ const staleMinutes = computed(() => {
                   fill="currentColor"
                 />
               </svg>
-              {{ SEVERITY[severity].label }}
+              {{ severityLabel }}
             </span>
           </p>
           <p class="figure" :class="{ 'figure-lg': large }" :style="quotaStyle">
@@ -173,9 +208,9 @@ const staleMinutes = computed(() => {
         </div>
 
         <div class="text-right">
-          <p class="eyebrow">Reset</p>
+          <p class="eyebrow">{{ t("provider.reset") }}</p>
           <p class="countdown">{{ countdown }}</p>
-          <p v-if="resetDate" class="footnote">{{ resetDate }} Uhr</p>
+          <p v-if="resetDate" class="footnote">{{ resetDate }}</p>
         </div>
       </div>
 
@@ -185,7 +220,7 @@ const staleMinutes = computed(() => {
             v-for="window in meters"
             :key="window.key"
             :remaining="window.remaining_percent"
-            :label="window.label"
+            :label="windowLabel(window)"
           />
         </div>
 
@@ -198,32 +233,46 @@ const staleMinutes = computed(() => {
          darunter im Klartext steht. -->
     <div v-else class="empty">
       <div class="empty-stage">
-        <ProviderMascot :provider="provider" :backend-down="backendDown" />
+        <ProviderMascot
+          :provider="provider"
+          :backend-down="backendDown"
+          :force-clip="
+            provider.id === 'codex'
+              ? 'cloudling-error.mp4'
+              : 'clawd-error.mp4'
+          "
+        />
       </div>
       <div class="empty-copy">
-        <p class="empty-title">Keine Kontingentdaten</p>
-        <p class="empty-text">
-          {{
-            provider.message ||
-            STATUS_HINTS[provider.status] ||
-            "Quelle liefert nichts."
-          }}
-        </p>
+        <p class="empty-title">{{ t("provider.noQuota") }}</p>
+        <p class="empty-text">{{ emptyMessage }}</p>
       </div>
     </div>
 
     <footer class="foot">
-      <span>Stand {{ updatedAt }} Uhr</span>
+      <span>{{ t("provider.updated", { time: updatedAt }) }}</span>
       <!-- Das Alter steht schon links im "Stand …" – hier zählt der Grund. -->
       <span
         v-if="provider.stale"
         class="foot-note"
-        :title="`Vor ${staleMinutes} Min. geholt · ${provider.warning ?? 'Abruf gescheitert'}`"
+        :title="
+          t('provider.staleTitle', {
+            minutes: staleMinutes,
+            reason:
+              language === 'en'
+                ? statusHint || t('provider.fetchFailed')
+                : provider.warning || t('provider.fetchFailed'),
+          })
+        "
       >
-        {{ provider.warning || "Wert wird gehalten" }}
+        {{
+          language === "en"
+            ? statusHint || t("provider.valueHeld")
+            : provider.warning || t("provider.valueHeld")
+        }}
       </span>
       <span v-else-if="provider.source === 'logs'" class="foot-note">
-        Wert stammt aus der letzten CLI-Sitzung
+        {{ t("provider.fromLogs") }}
       </span>
     </footer>
   </article>
@@ -418,18 +467,26 @@ const staleMinutes = computed(() => {
 /* Nimmt denselben Raum ein wie der Rumpf mit Zahlen – die Kachel behält
    ihre Höhe, egal ob eine Quelle liefert oder nicht. */
 .empty {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(5.75rem, 7.25rem) minmax(0, 1fr);
   flex: 1;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
+  gap: 1rem;
   min-height: 0;
   overflow: hidden;
-  border: 1px dashed var(--brand-hairline);
+  border: 1px solid
+    color-mix(in srgb, var(--brand-accent) 24%, var(--brand-hairline));
   border-radius: 0.9rem;
-  padding: 0.8rem 0.9rem;
-  text-align: center;
+  background:
+    linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--brand-accent) 9%, transparent),
+      transparent 48%
+    ),
+    rgb(255 255 255 / 1.5%);
+  padding: 0.75rem 1rem;
+  text-align: left;
 }
 
 /* Die Bühne nimmt die freie Höhe und hält die Figur in ihrer Mitte. Ohne
@@ -443,14 +500,21 @@ const staleMinutes = computed(() => {
   position: relative;
   display: grid;
   place-items: center;
-  flex: 1 1 4rem;
+  align-self: stretch;
   width: 100%;
   min-height: 0;
-  --mascot-size: 8rem;
+  overflow: hidden;
+  --mascot-size: 7rem;
 }
 
 .empty-stage:empty {
-  flex: none;
+  display: none;
+}
+
+.empty-stage:empty + .empty-copy {
+  grid-column: 1 / -1;
+  justify-self: center;
+  text-align: center;
 }
 
 /* Weicher Schein in der Markenfarbe: hebt die Figur von der Fläche ab,
@@ -458,12 +522,12 @@ const staleMinutes = computed(() => {
 .empty-stage::before {
   content: "";
   position: absolute;
-  width: min(11rem, 100%);
+  width: min(9rem, 130%);
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--brand-accent) 18%, transparent),
+    color-mix(in srgb, var(--brand-accent) 22%, transparent),
     transparent 68%
   );
 }
@@ -473,21 +537,38 @@ const staleMinutes = computed(() => {
 }
 
 .empty-copy {
-  flex-shrink: 0;
-  max-width: 22rem;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  max-width: 28rem;
 }
 
 .empty-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.empty-title::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--brand-accent);
+  box-shadow: 0 0 0.65rem
+    color-mix(in srgb, var(--brand-accent) 70%, transparent);
 }
 
 .empty-text {
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
   color: var(--brand-ink-muted);
   font-size: 0.75rem;
-  line-height: 1.35;
-  text-wrap: balance;
+  line-height: 1.45;
+  text-wrap: pretty;
 }
 
 .foot {
@@ -497,5 +578,34 @@ const staleMinutes = computed(() => {
   gap: 0.75rem;
   border-top: 1px solid var(--brand-hairline);
   padding-top: 0.5rem;
+}
+
+/* Auf niedrigen Kiosk-Displays bleibt der Zustand kompakt und horizontal. */
+@media (max-height: 600px) {
+  .empty {
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.55rem 0.8rem;
+  }
+
+  .empty-stage {
+    --mascot-size: 5.5rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .brand-card {
+    padding-inline: 0.8rem;
+  }
+
+  .empty {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: 0.65rem;
+    padding-inline: 0.7rem;
+  }
+
+  .empty-stage {
+    --mascot-size: 4.75rem;
+  }
 }
 </style>

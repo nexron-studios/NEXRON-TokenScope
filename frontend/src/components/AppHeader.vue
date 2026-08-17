@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useNow } from '@vueuse/core'
+import { useI18n } from '@/composables/useI18n'
 
 export type ViewId = 'dashboard' | 'logs' | 'settings'
 
@@ -14,17 +15,18 @@ defineProps<{
 defineEmits<{ navigate: [ViewId]; refresh: [] }>()
 
 const now = useNow({ interval: 10_000 })
+const { locale, t } = useI18n()
 const clock = computed(() =>
-  new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(
+  new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit' }).format(
     now.value,
   ),
 )
 
-const TABS: Array<{ id: ViewId; label: string }> = [
-  { id: 'dashboard', label: 'Kontingent' },
-  { id: 'logs', label: 'Verbrauch' },
-  { id: 'settings', label: 'Einstellungen' },
-]
+const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
+  { id: 'dashboard', label: t('nav.dashboard') },
+  { id: 'logs', label: t('nav.logs') },
+  { id: 'settings', label: t('nav.settings') },
+])
 </script>
 
 <template>
@@ -34,14 +36,14 @@ const TABS: Array<{ id: ViewId; label: string }> = [
       <span class="divider" />
       <span class="state" :class="connected ? 'up' : 'down'">
         <span class="dot" />
-        {{ connected ? 'Dienst lokal' : 'Kein Backend' }}
+        {{ connected ? t('nav.local') : t('nav.offline') }}
       </span>
       <span v-if="demo" class="demo">Demo</span>
     </div>
 
     <nav class="tabs">
       <button
-        v-for="tab in TABS"
+        v-for="tab in tabs"
         :key="tab.id"
         type="button"
         class="tab"
@@ -56,7 +58,7 @@ const TABS: Array<{ id: ViewId; label: string }> = [
         type="button"
         class="tab icon"
         :disabled="loading"
-        aria-label="Jetzt aktualisieren"
+        :aria-label="t('nav.refresh')"
         @click="$emit('refresh')"
       >
         <svg viewBox="0 0 24 24" class="size-5" :class="{ spin: loading }" fill="none">

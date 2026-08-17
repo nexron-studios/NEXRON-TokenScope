@@ -1,9 +1,12 @@
 import { useLocalStorage } from '@vueuse/core'
 import type { ProviderId } from '@/api/types'
+import type { Language } from '@/composables/useI18n'
 
 export type HistoryRange = 6 | 24 | 72 | 168
 
 export interface AppSettings {
+  /** Sprache der lokalen Oberfläche. */
+  language: Language
   /** Automatisch neu laden (das Backend pollt ohnehin weiter). */
   autoRefresh: boolean
   /** Abholintervall des Frontends in Sekunden. */
@@ -23,6 +26,7 @@ export interface AppSettings {
 }
 
 const DEFAULTS: AppSettings = {
+  language: 'de',
   autoRefresh: true,
   refreshIntervalSeconds: 60,
   enabledProviders: { claude: true, codex: true },
@@ -33,8 +37,21 @@ const DEFAULTS: AppSettings = {
   largeText: false,
 }
 
+const SETTINGS_KEY = 'nexron-tokenscope:settings'
+const LEGACY_SETTINGS_KEY = 'ai-usage-monitor:settings'
+
+// Bestehende Installationen behalten ihre lokalen Anzeigeoptionen. Der alte
+// Key bleibt nur als Migrationsquelle erhalten und wird nicht weiter benutzt.
+if (
+  typeof window !== 'undefined' &&
+  window.localStorage.getItem(SETTINGS_KEY) === null
+) {
+  const legacy = window.localStorage.getItem(LEGACY_SETTINGS_KEY)
+  if (legacy !== null) window.localStorage.setItem(SETTINGS_KEY, legacy)
+}
+
 const settings = useLocalStorage<AppSettings>(
-  'ai-usage-monitor:settings',
+  SETTINGS_KEY,
   { ...DEFAULTS },
   { mergeDefaults: true },
 )
