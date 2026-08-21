@@ -86,9 +86,7 @@ const emptyMessage = computed(() =>
     : props.provider.message || statusHint.value || t("provider.noData"),
 );
 
-const severityLabel = computed(() =>
-  t(`provider.status.${severity.value}`),
-);
+const severityLabel = computed(() => t(`provider.status.${severity.value}`));
 
 const windowLabel = (window: UsageWindow): string => {
   if (language.value === "de") return window.label;
@@ -130,7 +128,9 @@ const updatedAt = computed(() =>
 const updatedRelative = computed(() => {
   const fetchedAt = new Date(props.provider.fetched_at).getTime();
   const ageMinutes = Math.max(0, (clock.value.getTime() - fetchedAt) / 60_000);
-  const formatter = new Intl.RelativeTimeFormat(locale.value, { numeric: "auto" });
+  const formatter = new Intl.RelativeTimeFormat(locale.value, {
+    numeric: "auto",
+  });
 
   if (ageMinutes < 1) return t("provider.justNow");
   if (ageMinutes < 60) {
@@ -170,15 +170,13 @@ const updatedRelative = computed(() => {
           'badge-stale': provider.stale,
         }"
       >
-        {{
-          provider.stale ? t("provider.held") : sourceLabel
-        }}
+        {{ provider.stale ? t("provider.held") : sourceLabel }}
       </span>
     </header>
 
     <div v-if="primary" class="body">
       <div class="flex items-end justify-between gap-4">
-        <div>
+        <div class="min-w-0">
           <p class="eyebrow-row">
             <span class="eyebrow">{{
               t(provider.stale ? "provider.lastKnown" : "provider.available", {
@@ -221,11 +219,22 @@ const updatedRelative = computed(() => {
           </p>
         </div>
 
-        <div class="text-right">
+        <div class="shrink-0 text-right">
           <p class="eyebrow">
-            {{ t(provider.stale && isDue ? "provider.resetWas" : "provider.reset") }}
+            {{
+              t(
+                provider.stale && isDue
+                  ? "provider.resetWas"
+                  : "provider.reset",
+              )
+            }}
           </p>
-          <p class="countdown">
+          <!-- „bereits erfolgt“ ist ein Satz, keine Uhrzeit: In der Größe der
+               Countdown-Ziffern verdrängte er die Zeile links. -->
+          <p
+            class="countdown"
+            :class="{ 'countdown-word': provider.stale && isDue }"
+          >
             {{ provider.stale && isDue ? t("provider.expired") : countdown }}
           </p>
           <p v-if="resetDate" class="footnote">{{ resetDate }}</p>
@@ -255,11 +264,10 @@ const updatedRelative = computed(() => {
           :provider="provider"
           :backend-down="backendDown"
           :force-clip="
-            provider.id === 'codex'
-              ? 'cloudling-error.mp4'
-              : 'clawd-error.mp4'
+            provider.id === 'codex' ? 'cloudling-error.mp4' : 'clawd-error.mp4'
           "
         />
+        asdasdasda
       </div>
       <div class="empty-copy">
         <p class="empty-title">{{ t("provider.noQuota") }}</p>
@@ -439,6 +447,12 @@ const updatedRelative = computed(() => {
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.countdown-word {
+  font-size: 0.8125rem;
+  line-height: 1.3;
 }
 
 .footnote,
@@ -447,10 +461,13 @@ const updatedRelative = computed(() => {
   font-size: 0.6875rem;
 }
 
+/* Wird es eng, rutscht der Zustand als Ganzes in die zweite Zeile – lieber
+   das, als dass beide Angaben mitten im Wort brechen. */
 .eyebrow-row {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.55rem;
 }
 
 .state {
@@ -460,6 +477,7 @@ const updatedRelative = computed(() => {
   color: var(--brand-ink-muted);
   font-size: 0.6875rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .state-icon {
@@ -469,11 +487,24 @@ const updatedRelative = computed(() => {
 
 /* Balken und Begleiter teilen sich eine Zeile: Die Meterspalte ist bei zwei
    Fenstern ohnehin höher als er, damit kostet er keine zusätzliche Höhe. */
+/* Die Zeile nimmt die verbleibende Höhe des Rumpfs – erst dadurch ist sie für
+   den Begleiter eine feste Bezugsgröße, an der sein `max-height` greift.
+   Vorher hatte sie nur Inhaltshöhe, der Begleiter behielt seine 5.5rem und
+   lief auf dem 600px-Panel unten aus der Kachel heraus, wo `overflow: hidden`
+   ihn abschnitt. Das Polster darunter hält ihn zusätzlich von der Fußlinie
+   weg. */
 .body-row {
   display: flex;
-  align-items: center;
+  /* Oben verankert wie der übrige Rumpf. Zentriert verteilte die Zeile ihren
+     Überlauf auf beide Seiten – die Meterbeschriftung lief dann in die
+     Prozentzahl darüber – und schob bei nur einem Limitfenster den Balken
+     grundlos in die Mitte der freien Fläche. */
+  align-items: flex-start;
+  flex: 1;
   gap: 0.9rem;
+  min-height: 0;
   margin-top: 0.85rem;
+  padding-bottom: 0.35rem;
 }
 
 /* Alle Limitfenster untereinander, gleiche Breite, gleicher Nullpunkt. */
@@ -598,6 +629,38 @@ const updatedRelative = computed(() => {
   gap: 0.75rem;
   border-top: 1px solid var(--brand-hairline);
   padding-top: 0.5rem;
+}
+
+/* Steht ein Banner über den Kacheln oder ist das Panel ohnehin niedrig, fehlen
+   dem Rumpf schnell 30 bis 50 Pixel. Dann geben zuerst die Abstände nach und
+   die Prozentzahl gibt etwas Größe ab – beides kostet keine Aussage, während
+   ein abgeschnittenes zweites Limitfenster eine ganze Zeile verschluckt. */
+@media (max-height: 640px) {
+  .brand-card {
+    gap: 0.5rem;
+    padding: 0.7rem 0.9rem 0.55rem;
+  }
+
+  .figure {
+    font-size: 2.35rem;
+  }
+
+  .figure-lg {
+    font-size: 2.8rem;
+  }
+
+  .countdown {
+    font-size: 0.95rem;
+  }
+
+  .body-row {
+    gap: 0.7rem;
+    margin-top: 0.5rem;
+  }
+
+  .meters {
+    gap: 0.5rem;
+  }
 }
 
 /* Auf niedrigen Kiosk-Displays bleibt der Zustand kompakt und horizontal. */

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useNow } from '@vueuse/core'
 import { useI18n } from '@/composables/useI18n'
+import nexronLogo from '@/assets/logos/nexron_logo.svg'
 
 export type ViewId = 'dashboard' | 'logs' | 'settings'
 
@@ -32,6 +33,10 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
 <template>
   <header class="head">
     <div class="brand">
+      <!-- Reine Herkunftsangabe: Der Schriftzug trägt keine Information, die
+           nicht anderswo steht, deshalb bleibt er aus dem Vorlesefluss. -->
+      <img :src="nexronLogo" class="logo" alt="" aria-hidden="true" />
+      <span class="divider" />
       <span class="clock">{{ clock }}</span>
       <span class="divider" />
       <span class="state" :class="connected ? 'up' : 'down'">
@@ -90,6 +95,16 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
   align-items: center;
   gap: 0.7rem;
   min-width: 0;
+}
+
+/* Der Schriftzug ist zweizeilig: Unter etwa 1.4rem Höhe zerfällt die untere
+   Zeile auf dem Panel zu einem grauen Balken. Die schwarze Schattenkante der
+   Datei verschwindet auf dem dunklen Grund von selbst, es bleiben die weißen
+   Lettern. */
+.logo {
+  height: 1.45rem;
+  width: auto;
+  flex: none;
 }
 
 .clock {
@@ -189,6 +204,14 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Auf schmalen Geräten hat die Kopfzeile neben den Reitern kaum Platz: Der
+   Schriftzug tritt zurück, Uhr und Zustand bleiben. */
+@media (max-width: 420px) {
+  .logo {
+    height: 1.1rem;
   }
 }
 </style>

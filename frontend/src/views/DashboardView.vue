@@ -65,6 +65,7 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
     </p>
 
     <UsageHistoryChart
+      class="history"
       :history="history"
       :hours="historyHours"
       :visible-providers="visibleIds"
@@ -84,12 +85,21 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
   min-height: 0;
 }
 
+/* `flex: 0 1 auto`: Die Kacheln nehmen sich die Höhe, die ihr Inhalt braucht,
+   und geben sie nur her, wenn es sonst nicht reicht. Alles darüber hinaus
+   gehört dem Verlauf – sonst stünde in jeder Kachel ein leeres Feld unter den
+   Balken. */
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
   gap: 0.75rem;
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
+}
+
+.history {
+  flex: 1 1 0;
+  min-height: 8rem;
 }
 
 .empty {

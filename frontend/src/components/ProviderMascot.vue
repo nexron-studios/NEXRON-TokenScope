@@ -293,8 +293,12 @@ onBeforeUnmount(() => {
  */
 .mascot {
   position: relative;
-  width: var(--mascot-size, 5.5rem);
+  width: auto;
   height: var(--mascot-size, 5.5rem);
+  /* Quadratisch über das Seitenverhältnis statt über eine zweite feste Kante:
+     Greift einer der Deckel, zieht die andere Kante mit – die Figur wird
+     kleiner, statt an einem Rand abgeschnitten zu werden. */
+  aspect-ratio: 1;
   max-width: 100%;
   max-height: 100%;
   flex: none;

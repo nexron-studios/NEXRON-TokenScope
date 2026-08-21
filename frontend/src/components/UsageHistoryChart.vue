@@ -16,11 +16,20 @@ const { language, locale, t } = useI18n()
 
 const SURFACE = '#16161a'
 const PAD = { top: 12, right: 60, bottom: 20, left: 34 }
-// Bewusst flach: Auf 1024 × 600 gehört die Höhe den beiden Kacheln.
-const HEIGHT = 118
-
 const wrapper = useTemplateRef<HTMLElement>('wrapper')
 const { width } = useElementSize(wrapper)
+
+/*
+ * Die Zeichenfläche misst sich selbst, statt eine feste Höhe zu setzen: Die
+ * Kacheln nehmen sich oben, was sie brauchen, der Verlauf bekommt den Rest.
+ * So bleibt auf 1024 × 600 (mit Banner sogar knapper) alles vollständig,
+ * während auf einem hohen Fenster kein leerer Streifen stehen bleibt.
+ * Rückkopplung ist ausgeschlossen: `.plot` bezieht seine Höhe aus dem
+ * Flexlayout, nicht aus dem SVG darin.
+ */
+const plot = useTemplateRef<HTMLElement>('plot')
+const { height: plotHeight } = useElementSize(plot)
+const HEIGHT = computed(() => Math.round(plotHeight.value) || 118)
 const chartNow = useNow({ interval: 60_000 })
 const chartWidth = computed(() => Math.max(320, width.value || 640))
 
@@ -115,7 +124,7 @@ const scaleX = (t: number) => {
 }
 
 const scaleY = (used: number) => {
-  const inner = HEIGHT - PAD.top - PAD.bottom
+  const inner = HEIGHT.value - PAD.top - PAD.bottom
   return PAD.top + (1 - Math.min(100, Math.max(0, used)) / 100) * inner
 }
 
@@ -243,96 +252,99 @@ const timeFormat = computed(
       <span v-for="index in 4" :key="index" class="placeholder-line" />
     </div>
 
-    <div v-else-if="!series.length" class="empty">
-      {{ t('history.empty') }}
-    </div>
+    <!-- Auch ohne Punkte bleibt das Raster stehen: Der Verlauf ist ein fester
+         Teil der Ansicht, kein Zustand, der kommt und geht. Die Kachel behält
+         damit ihre Höhe, und der Hinweis erklärt die leere Fläche an Ort und
+         Stelle. -->
+    <div v-else ref="plot" class="plot">
+      <svg
+        class="chart"
+        :width="chartWidth"
+        :height="HEIGHT"
+        :viewBox="`0 0 ${chartWidth} ${HEIGHT}`"
+        role="img"
+        :aria-label="t('history.aria')"
+        @pointermove="onPointer"
+        @pointerdown="onPointer"
+        @pointerleave="cursorT = undefined"
+      >
+        <g class="grid">
+          <template v-for="value in gridValues" :key="value">
+            <line
+              :x1="PAD.left"
+              :x2="chartWidth - PAD.right"
+              :y1="scaleY(value)"
+              :y2="scaleY(value)"
+            />
+            <text
+              v-if="value % 50 === 0"
+              :x="PAD.left - 8"
+              :y="scaleY(value) + 3.5"
+              text-anchor="end"
+            >
+              {{ value }}
+            </text>
+          </template>
+        </g>
 
-    <svg
-      v-else
-      class="chart"
-      :width="chartWidth"
-      :height="HEIGHT"
-      :viewBox="`0 0 ${chartWidth} ${HEIGHT}`"
-      role="img"
-      :aria-label="t('history.aria')"
-      @pointermove="onPointer"
-      @pointerdown="onPointer"
-      @pointerleave="cursorT = undefined"
-    >
-      <g class="grid">
-        <template v-for="value in gridValues" :key="value">
-          <line
-            :x1="PAD.left"
-            :x2="chartWidth - PAD.right"
-            :y1="scaleY(value)"
-            :y2="scaleY(value)"
-          />
+        <g class="ticks">
           <text
-            v-if="value % 50 === 0"
-            :x="PAD.left - 8"
-            :y="scaleY(value) + 3.5"
-            text-anchor="end"
+            v-for="tick in timeTicks"
+            :key="tick.t"
+            :x="scaleX(tick.t)"
+            :y="HEIGHT - 6"
+            text-anchor="middle"
           >
-            {{ value }}
+            {{ tick.label }}
           </text>
-        </template>
-      </g>
+        </g>
 
-      <g class="ticks">
-        <text
-          v-for="tick in timeTicks"
-          :key="tick.t"
-          :x="scaleX(tick.t)"
-          :y="HEIGHT - 6"
-          text-anchor="middle"
-        >
-          {{ tick.label }}
-        </text>
-      </g>
-
-      <line
-        v-if="readout"
-        class="crosshair"
-        :x1="readout.x"
-        :x2="readout.x"
-        :y1="PAD.top - 4"
-        :y2="HEIGHT - PAD.bottom"
-      />
-
-      <g v-for="entry in series" :key="entry.provider">
-        <path :d="pathOf(entry)" fill="none" :stroke="entry.color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-        <circle
-          :cx="scaleX(domain.end)"
-          :cy="scaleY(entry.last.used)"
-          r="4"
-          :fill="entry.color"
-          :stroke="SURFACE"
-          stroke-width="2"
+        <line
+          v-if="readout"
+          class="crosshair"
+          :x1="readout.x"
+          :x2="readout.x"
+          :y1="PAD.top - 4"
+          :y2="HEIGHT - PAD.bottom"
         />
-        <!-- Direktbeschriftung: Identität hängt nie allein an der Farbe. -->
-        <text
-          class="direct-label"
-          :x="Math.min(chartWidth - PAD.right + 8, chartWidth - 6)"
-          :y="scaleY(entry.last.used) + 4"
-          :fill="entry.color"
-        >
-          {{ entry.short }}
-        </text>
-      </g>
 
-      <g v-if="readout">
-        <circle
-          v-for="row in readout.rows"
-          :key="row.entry.provider"
-          :cx="scaleX(row.point.t)"
-          :cy="scaleY(row.point.used)"
-          r="4.5"
-          :fill="row.entry.color"
-          :stroke="SURFACE"
-          stroke-width="2"
-        />
-      </g>
-    </svg>
+        <g v-for="entry in series" :key="entry.provider">
+          <path :d="pathOf(entry)" fill="none" :stroke="entry.color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+          <circle
+            :cx="scaleX(domain.end)"
+            :cy="scaleY(entry.last.used)"
+            r="4"
+            :fill="entry.color"
+            :stroke="SURFACE"
+            stroke-width="2"
+          />
+          <!-- Direktbeschriftung: Identität hängt nie allein an der Farbe. -->
+          <text
+            class="direct-label"
+            :x="Math.min(chartWidth - PAD.right + 8, chartWidth - 6)"
+            :y="scaleY(entry.last.used) + 4"
+            :fill="entry.color"
+          >
+            {{ entry.short }}
+          </text>
+        </g>
+
+        <g v-if="readout">
+          <circle
+            v-for="row in readout.rows"
+            :key="row.entry.provider"
+            :cx="scaleX(row.point.t)"
+            :cy="scaleY(row.point.used)"
+            r="4.5"
+            :fill="row.entry.color"
+            :stroke="SURFACE"
+            stroke-width="2"
+          />
+        </g>
+      </svg>
+
+      <p v-if="!series.length" class="chart-note">{{ t('history.empty') }}</p>
+    </div>
 
     <div v-if="readout" class="tooltip" :style="{ left: `${readout.x}px` }">
       <p class="tooltip-time">{{ timeFormat.format(new Date(readout.at)) }}</p>
@@ -364,6 +376,9 @@ const timeFormat = computed(
 <style scoped>
 .panel {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 1.25rem;
   background: #16161a;
@@ -466,19 +481,43 @@ const timeFormat = computed(
   font-variant-numeric: tabular-nums;
 }
 
-.empty {
-  color: #b2b2bb;
-  font-size: 0.75rem;
-  line-height: 1.5;
-  padding: 1.6rem 0 1.8rem;
-  text-align: center;
+/* `flex: 1 1 0`: Die Höhe kommt ausschließlich aus dem freien Raum, nie aus
+   dem Inhalt – sonst würde das gemessene SVG die Fläche aufschaukeln. */
+.plot {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 4.5rem;
+  margin-top: 0.4rem;
 }
 
+.chart {
+  display: block;
+}
+
+/* Sitzt über der Zeichenfläche, nicht über den Zeitmarken darunter – deshalb
+   endet der Kasten am unteren Rand des Rasters. */
+.chart-note {
+  position: absolute;
+  inset: 0 0 20px;
+  display: grid;
+  place-items: center;
+  color: #8f8f99;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  padding-inline: 1.5rem;
+  pointer-events: none;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* Nimmt dieselbe Fläche ein wie die Zeichenfläche danach – sonst springt die
+   Kachel, sobald die ersten Punkte da sind. */
 .chart-placeholder {
   position: relative;
   display: grid;
   align-content: space-evenly;
-  height: 7.4rem;
+  flex: 1 1 0;
+  min-height: 4.5rem;
   overflow: hidden;
   margin-top: 0.4rem;
 }

@@ -46,7 +46,7 @@ def status_from_http(status_code: int) -> tuple[ProviderStatus, str]:
     if status_code in (401, 403):
         return (
             "unauthorized",
-            "Token abgelehnt. Melde dich in der CLI neu an, dann erneut versuchen.",
+            "Token abgelehnt – bitte neu anmelden.",
         )
     if status_code == 404:
         return (
