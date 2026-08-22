@@ -3,6 +3,13 @@ import { computed } from "vue";
 import { useNow } from "@vueuse/core";
 import { useI18n } from "@/composables/useI18n";
 import nexronLogo from "@/assets/logos/nexron_logo.svg";
+import {
+  ChartColumn,
+  Gauge,
+  RefreshCw,
+  Settings,
+  type LucideIcon,
+} from "@lucide/vue";
 
 export type ViewId = "dashboard" | "logs" | "settings";
 
@@ -25,11 +32,13 @@ const clock = computed(() =>
   }).format(now.value),
 );
 
-const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
-  { id: "dashboard", label: t("nav.dashboard") },
-  { id: "logs", label: t("nav.logs") },
-  { id: "settings", label: t("nav.settings") },
-]);
+const tabs = computed<Array<{ id: ViewId; label: string; icon: LucideIcon }>>(
+  () => [
+    { id: "dashboard", label: t("nav.dashboard"), icon: Gauge },
+    { id: "logs", label: t("nav.logs"), icon: ChartColumn },
+    { id: "settings", label: t("nav.settings"), icon: Settings },
+  ],
+);
 </script>
 
 <template>
@@ -58,6 +67,7 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
         :aria-current="view === tab.id ? 'page' : undefined"
         @click="$emit('navigate', tab.id)"
       >
+        <component :is="tab.icon" class="size-4 shrink-0" aria-hidden="true" />
         {{ tab.label }}
       </button>
 
@@ -68,20 +78,11 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
         :aria-label="t('nav.refresh')"
         @click="$emit('refresh')"
       >
-        <svg
-          viewBox="0 0 24 24"
+        <RefreshCw
           class="size-5"
-          :class="{ spin: loading }"
-          fill="none"
-        >
-          <path
-            d="M20 11a8 8 0 0 0-14.9-4M4 5v5h5m-5 3a8 8 0 0 0 14.9 4M20 19v-5h-5"
-            stroke="currentColor"
-            stroke-width="1.9"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
+          :class="{ 'animate-spin': loading }"
+          aria-hidden="true"
+        />
       </button>
     </nav>
   </header>
@@ -172,6 +173,10 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
 }
 
 .tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   min-height: 3rem;
   border: 0;
   border-radius: 0.65rem;
@@ -204,16 +209,6 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
 
 .tab:disabled {
   opacity: 0.5;
-}
-
-.spin {
-  animation: spin 900ms linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* Auf schmalen Geräten hat die Kopfzeile neben den Reitern kaum Platz: Der

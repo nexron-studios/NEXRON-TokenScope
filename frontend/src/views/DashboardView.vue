@@ -6,6 +6,7 @@ import ProviderCardPlaceholder from '@/components/ProviderCardPlaceholder.vue'
 import UsageHistoryChart from '@/components/UsageHistoryChart.vue'
 import { useI18n } from '@/composables/useI18n'
 import type { HistoryResponse, ProviderUsage } from '@/api/types'
+import { CircleOff } from '@lucide/vue'
 
 const props = defineProps<{
   providers: ProviderUsage[]
@@ -59,6 +60,7 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
     <!-- Steht schon ein Banner oben, wäre dieser Hinweis nur ein zweiter
          Grund für dieselbe leere Fläche. -->
     <p v-else-if="!backendError" class="empty">
+      <CircleOff class="size-4 shrink-0 opacity-80" aria-hidden="true" />
       {{ t('dashboard.noProviders') }}
     </p>
 
@@ -101,8 +103,10 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
 }
 
 .empty {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   flex: 1;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 0.9rem;

@@ -96,6 +96,7 @@ class LastKnownValueTests(unittest.TestCase):
         self.assertEqual(result.fetched_at, captured_at)
         self.assertEqual(result.windows[0].remaining_percent, 77)
         self.assertEqual(result.warning, "Token abgelehnt")
+        self.assertEqual(result.warning_status, "unauthorized")
 
     def test_pruning_preserves_last_snapshot_for_restart(self) -> None:
         captured_at = datetime.now(timezone.utc) - timedelta(days=10)

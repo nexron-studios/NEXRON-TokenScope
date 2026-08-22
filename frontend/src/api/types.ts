@@ -30,13 +30,16 @@ export interface ProviderUsage {
   windows: UsageWindow[]
   source: SourceKind
   status: ProviderStatus
+  /** Klartext für Diagnose – angezeigt wird die Übersetzung von `status`. */
   message: string | null
   /** Zeitpunkt dieser Werte – bei `stale` älter als der letzte Poll. */
   fetched_at: string
   /** Werte stammen aus dem letzten geglückten Abruf. */
   stale: boolean
-  /** Warum der frische Abruf scheiterte. */
+  /** Warum der frische Abruf scheiterte – Klartext für Diagnose. */
   warning: string | null
+  /** Status des gescheiterten Abrufs, damit der Grund übersetzt werden kann. */
+  warning_status: ProviderStatus | null
   retry_after_seconds: number | null
 }
 

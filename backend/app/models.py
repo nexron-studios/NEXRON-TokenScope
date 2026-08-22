@@ -41,6 +41,8 @@ class ProviderUsage(BaseModel):
     windows: list[UsageWindow] = Field(default_factory=list)
     source: SourceKind = "none"
     status: ProviderStatus = "error"
+    #: Klartext für Logs und Diagnose. Die Oberfläche zeigt statt dessen die
+    #: übersetzte Fassung von ``status``.
     message: str | None = None
     #: Zeitpunkt, zu dem *diese Werte* geholt wurden – bei zwischengespeicherten
     #: Daten also älter als der letzte Poll.
@@ -48,7 +50,12 @@ class ProviderUsage(BaseModel):
     #: Werte stammen aus dem letzten geglückten Abruf, nicht aus diesem.
     stale: bool = False
     #: Warum der frische Abruf scheiterte, während die Werte weiter gelten.
+    #: Klartext für Logs und Diagnose – die Oberfläche übersetzt statt dessen
+    #: ``warning_status``.
     warning: str | None = None
+    #: Status des gescheiterten Abrufs, damit die Oberfläche den Grund
+    #: übersetzen kann, ohne den deutschen Klartext zu zeigen.
+    warning_status: ProviderStatus | None = None
     #: Vom Anbieter gefordete Wartezeit (`Retry-After`) bei Ratenbegrenzung.
     retry_after_seconds: float | None = None
 

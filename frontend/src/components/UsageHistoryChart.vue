@@ -1,23 +1,24 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue'
-import { useElementSize, useNow } from '@vueuse/core'
-import { brandOf } from '@/theme/brands'
-import { useI18n } from '@/composables/useI18n'
-import type { HistoryResponse, ProviderId } from '@/api/types'
+import { computed, ref, useTemplateRef } from "vue";
+import { useElementSize, useNow } from "@vueuse/core";
+import { brandOf } from "@/theme/brands";
+import { useI18n } from "@/composables/useI18n";
+import type { HistoryResponse, ProviderId } from "@/api/types";
+import { ChartLine, Inbox } from "@lucide/vue";
 
 const props = defineProps<{
-  history?: HistoryResponse
-  hours: number
-  visibleProviders: ProviderId[]
-  loading?: boolean
-}>()
+  history?: HistoryResponse;
+  hours: number;
+  visibleProviders: ProviderId[];
+  loading?: boolean;
+}>();
 
-const { language, locale, t } = useI18n()
+const { language, locale, t } = useI18n();
 
-const SURFACE = '#16161a'
-const PAD = { top: 12, right: 60, bottom: 20, left: 34 }
-const wrapper = useTemplateRef<HTMLElement>('wrapper')
-const { width } = useElementSize(wrapper)
+const SURFACE = "#16161a";
+const PAD = { top: 12, right: 60, bottom: 20, left: 34 };
+const wrapper = useTemplateRef<HTMLElement>("wrapper");
+const { width } = useElementSize(wrapper);
 
 /*
  * Die Zeichenfläche misst sich selbst, statt eine feste Höhe zu setzen: Die
@@ -27,41 +28,41 @@ const { width } = useElementSize(wrapper)
  * Rückkopplung ist ausgeschlossen: `.plot` bezieht seine Höhe aus dem
  * Flexlayout, nicht aus dem SVG darin.
  */
-const plot = useTemplateRef<HTMLElement>('plot')
-const { height: plotHeight } = useElementSize(plot)
-const HEIGHT = computed(() => Math.round(plotHeight.value) || 118)
-const chartNow = useNow({ interval: 60_000 })
-const chartWidth = computed(() => Math.max(320, width.value || 640))
+const plot = useTemplateRef<HTMLElement>("plot");
+const { height: plotHeight } = useElementSize(plot);
+const HEIGHT = computed(() => Math.round(plotHeight.value) || 118);
+const chartNow = useNow({ interval: 60_000 });
+const chartWidth = computed(() => Math.max(320, width.value || 640));
 
 interface Point {
-  t: number
-  used: number
+  t: number;
+  used: number;
 }
 
 interface Series {
-  provider: ProviderId
-  short: string
-  color: string
-  label: string
-  points: Point[]
+  provider: ProviderId;
+  short: string;
+  color: string;
+  label: string;
+  points: Point[];
   /** Jüngster Punkt – trägt Endmarker und Direktbeschriftung. */
-  last: Point
+  last: Point;
 }
 
 /** Pro Anbieter genau eine Linie: das kürzeste gespeicherte Fenster. */
 const series = computed<Series[]>(() => {
-  const raw = props.history?.series ?? []
-  const chosen = new Map<ProviderId, { rank: number; series: Series }>()
+  const raw = props.history?.series ?? [];
+  const chosen = new Map<ProviderId, { rank: number; series: Series }>();
 
   const rank = (key: string) =>
-    key === 'five_hour' || key === 'primary' ? 0 : key === 'seven_day' ? 1 : 2
+    key === "five_hour" || key === "primary" ? 0 : key === "seven_day" ? 1 : 2;
 
   for (const entry of raw) {
-    if (!props.visibleProviders.includes(entry.provider)) continue
+    if (!props.visibleProviders.includes(entry.provider)) continue;
 
-    const entryRank = rank(entry.window_key)
-    const existing = chosen.get(entry.provider)
-    if (existing && existing.rank <= entryRank) continue
+    const entryRank = rank(entry.window_key);
+    const existing = chosen.get(entry.provider);
+    if (existing && existing.rank <= entryRank) continue;
 
     const points = entry.points
       .map((point) => ({
@@ -69,64 +70,72 @@ const series = computed<Series[]>(() => {
         used: point.used_percent,
       }))
       .filter((point) => Number.isFinite(point.t))
-      .sort((a, b) => a.t - b.t)
+      .sort((a, b) => a.t - b.t);
 
-    const last = points.at(-1)
-    if (!last) continue
+    const last = points.at(-1);
+    if (!last) continue;
 
-    const brand = brandOf(entry.provider)
+    const brand = brandOf(entry.provider);
     const labels: Record<string, string> = {
-      five_hour: '5 hours',
-      seven_day: '7 days',
-      seven_day_opus: '7 days · Opus',
-      seven_day_oauth_apps: '7 days · Apps',
-      monthly: '30 days',
-      primary: entry.label === '7 Tage' ? '7 days' : entry.label,
-    }
+      five_hour: "5 hours",
+      seven_day: "7 days",
+      seven_day_opus: "7 days · Opus",
+      seven_day_oauth_apps: "7 days · Apps",
+      monthly: "30 days",
+      primary: entry.label === "7 Tage" ? "7 days" : entry.label,
+    };
     chosen.set(entry.provider, {
       rank: entryRank,
       series: {
         provider: entry.provider,
         short: brand.short,
         color: brand.series,
-        label: language.value === 'en' ? labels[entry.window_key] ?? entry.label : entry.label,
+        label:
+          language.value === "en"
+            ? (labels[entry.window_key] ?? entry.label)
+            : entry.label,
         points,
         last,
       },
-    })
+    });
   }
 
-  return [...chosen.values()].map((item) => item.series)
-})
+  return [...chosen.values()].map((item) => item.series);
+});
 
 /** Dieselben Daten als Zeilen – Grundlage der Tabellenansicht. */
 const tableRows = computed(() => {
-  const columns = series.value
-  const stamps = [...new Set(columns.flatMap((entry) => entry.points.map((p) => p.t)))].sort(
-    (a, b) => a - b,
-  )
+  const columns = series.value;
+  const stamps = [
+    ...new Set(columns.flatMap((entry) => entry.points.map((p) => p.t))),
+  ].sort((a, b) => a - b);
   return stamps.map((t) => ({
     t,
-    values: columns.map((entry) => entry.points.find((point) => point.t === t)?.used),
-  }))
-})
+    values: columns.map(
+      (entry) => entry.points.find((point) => point.t === t)?.used,
+    ),
+  }));
+});
 
 const domain = computed(() => {
-  const end = chartNow.value.getTime()
-  const start = end - props.hours * 3_600_000
-  return { start, end }
-})
+  const end = chartNow.value.getTime();
+  const start = end - props.hours * 3_600_000;
+  return { start, end };
+});
 
 const scaleX = (t: number) => {
-  const { start, end } = domain.value
-  const ratio = (t - start) / Math.max(1, end - start)
-  return PAD.left + Math.min(1, Math.max(0, ratio)) * (chartWidth.value - PAD.left - PAD.right)
-}
+  const { start, end } = domain.value;
+  const ratio = (t - start) / Math.max(1, end - start);
+  return (
+    PAD.left +
+    Math.min(1, Math.max(0, ratio)) * (chartWidth.value - PAD.left - PAD.right)
+  );
+};
 
 const scaleY = (used: number) => {
-  const inner = HEIGHT.value - PAD.top - PAD.bottom
-  return PAD.top + (1 - Math.min(100, Math.max(0, used)) / 100) * inner
-}
+  const inner = HEIGHT.value - PAD.top - PAD.bottom;
+  return PAD.top + (1 - Math.min(100, Math.max(0, used)) / 100) * inner;
+};
 
 /**
  * Snapshots sind Zustände, keine einzelnen Ereignisse. Deshalb bleibt jeder
@@ -135,104 +144,106 @@ const scaleY = (used: number) => {
  * „Jetzt“.
  */
 const pathOf = (entry: Series) => {
-  const { start, end } = domain.value
-  const first = entry.points[0]
-  if (!first) return ''
+  const { start, end } = domain.value;
+  const first = entry.points[0];
+  if (!first) return "";
 
-  let path = `M${scaleX(start).toFixed(1)} ${scaleY(0).toFixed(1)}`
+  let path = `M${scaleX(start).toFixed(1)} ${scaleY(0).toFixed(1)}`;
   for (const point of entry.points) {
-    path += ` H${scaleX(point.t).toFixed(1)} V${scaleY(point.used).toFixed(1)}`
+    path += ` H${scaleX(point.t).toFixed(1)} V${scaleY(point.used).toFixed(1)}`;
   }
-  return `${path} H${scaleX(end).toFixed(1)}`
-}
+  return `${path} H${scaleX(end).toFixed(1)}`;
+};
 
-const gridValues = [0, 25, 50, 75, 100]
+const gridValues = [0, 25, 50, 75, 100];
 
 const timeTicks = computed(() => {
-  const { start, end } = domain.value
+  const { start, end } = domain.value;
   const stepHours =
-    props.hours <= 6 ? 2 : props.hours <= 24 ? 6 : props.hours <= 72 ? 12 : 24
+    props.hours <= 6 ? 2 : props.hours <= 24 ? 6 : props.hours <= 72 ? 12 : 24;
   const format = new Intl.DateTimeFormat(locale.value, {
-    hour: '2-digit',
-    minute: '2-digit',
-    ...(props.hours > 48 ? { weekday: 'short' } : {}),
-  })
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(props.hours > 48 ? { weekday: "short" } : {}),
+  });
 
   // Nicht vom aktuellen Minutenwert rückwärts teilen: Aus 17:52 würden
   // sonst ausschließlich Ticks auf :52. Stattdessen an gut lesbaren vollen
   // Stunden ausrichten und den beweglichen rechten Rand als „Jetzt“ benennen.
-  const first = new Date(start)
-  first.setMinutes(0, 0, 0)
-  if (stepHours === 24) first.setHours(0)
-  else first.setHours(Math.ceil(first.getHours() / stepHours) * stepHours)
-  while (first.getTime() < start) first.setHours(first.getHours() + stepHours)
+  const first = new Date(start);
+  first.setMinutes(0, 0, 0);
+  if (stepHours === 24) first.setHours(0);
+  else first.setHours(Math.ceil(first.getHours() / stepHours) * stepHours);
+  while (first.getTime() < start) first.setHours(first.getHours() + stepHours);
 
-  const ticks: Array<{ t: number; label: string }> = []
-  const cursor = new Date(first)
+  const ticks: Array<{ t: number; label: string }> = [];
+  const cursor = new Date(first);
   while (cursor.getTime() <= end) {
-    ticks.push({ t: cursor.getTime(), label: format.format(cursor) })
-    cursor.setHours(cursor.getHours() + stepHours)
+    ticks.push({ t: cursor.getTime(), label: format.format(cursor) });
+    cursor.setHours(cursor.getHours() + stepHours);
   }
 
   // Kein Zahlenlabel direkt neben „Jetzt“ quetschen.
-  const last = ticks.at(-1)
-  if (last && end - last.t < stepHours * 3_600_000 * 0.4) ticks.pop()
-  ticks.push({ t: end, label: t('history.now') })
-  return ticks
-})
+  const last = ticks.at(-1);
+  if (last && end - last.t < stepHours * 3_600_000 * 0.4) ticks.pop();
+  ticks.push({ t: end, label: t("history.now") });
+  return ticks;
+});
 
 // --- Crosshair: funktioniert mit Maus und Finger gleichermaßen -----------
-const cursorT = ref<number>()
+const cursorT = ref<number>();
 
 const onPointer = (event: PointerEvent) => {
-  const bounds = (event.currentTarget as SVGElement).getBoundingClientRect()
-  const x = event.clientX - bounds.left
-  const inner = chartWidth.value - PAD.left - PAD.right
-  const ratio = (x - PAD.left) / Math.max(1, inner)
+  const bounds = (event.currentTarget as SVGElement).getBoundingClientRect();
+  const x = event.clientX - bounds.left;
+  const inner = chartWidth.value - PAD.left - PAD.right;
+  const ratio = (x - PAD.left) / Math.max(1, inner);
   if (ratio < -0.05 || ratio > 1.05) {
-    cursorT.value = undefined
-    return
+    cursorT.value = undefined;
+    return;
   }
-  const { start, end } = domain.value
-  cursorT.value = start + Math.min(1, Math.max(0, ratio)) * (end - start)
-}
+  const { start, end } = domain.value;
+  cursorT.value = start + Math.min(1, Math.max(0, ratio)) * (end - start);
+};
 
 const readout = computed(() => {
-  if (cursorT.value === undefined) return undefined
-  const at = cursorT.value
+  if (cursorT.value === undefined) return undefined;
+  const at = cursorT.value;
 
-  const rows = series.value
-    .map((entry) => {
-      const first = entry.points[0] ?? entry.last
-      let nearest = at < first.t ? { t: at, used: 0 } : first
-      for (const point of entry.points) {
-        if (point.t <= at) nearest = point
-        else break
-      }
-      return { entry, point: nearest }
-    })
+  const rows = series.value.map((entry) => {
+    const first = entry.points[0] ?? entry.last;
+    let nearest = at < first.t ? { t: at, used: 0 } : first;
+    for (const point of entry.points) {
+      if (point.t <= at) nearest = point;
+      else break;
+    }
+    return { entry, point: nearest };
+  });
 
-  if (!rows.length) return undefined
-  return { x: scaleX(at), at, rows }
-})
+  if (!rows.length) return undefined;
+  return { x: scaleX(at), at, rows };
+});
 
 const timeFormat = computed(
   () =>
     new Intl.DateTimeFormat(locale.value, {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     }),
-)
+);
 </script>
 
 <template>
   <section ref="wrapper" class="panel">
     <div class="panel-head">
-      <div>
-        <h2 class="panel-title">{{ t('history.title') }}</h2>
-        <p class="panel-sub">{{ t('history.subtitle') }}</p>
+      <div class="flex flex-row gap-2 items-center">
+        <ChartLine class="size-6" :stroke-width="3" />
+        <div>
+          <h2 class="panel-title">{{ t("history.title") }}</h2>
+          <p class="panel-sub">{{ t("history.subtitle") }}</p>
+        </div>
       </div>
 
       <ul v-if="series.length" class="legend">
@@ -309,7 +320,14 @@ const timeFormat = computed(
         />
 
         <g v-for="entry in series" :key="entry.provider">
-          <path :d="pathOf(entry)" fill="none" :stroke="entry.color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+          <path
+            :d="pathOf(entry)"
+            fill="none"
+            :stroke="entry.color"
+            stroke-width="2"
+            stroke-linejoin="round"
+            stroke-linecap="round"
+          />
           <circle
             :cx="scaleX(domain.end)"
             :cy="scaleY(entry.last.used)"
@@ -343,12 +361,19 @@ const timeFormat = computed(
         </g>
       </svg>
 
-      <p v-if="!series.length" class="chart-note">{{ t('history.empty') }}</p>
+      <p v-if="!series.length" class="chart-note">
+        <Inbox class="size-4 shrink-0 opacity-80" aria-hidden="true" />
+        {{ t("history.empty") }}
+      </p>
     </div>
 
     <div v-if="readout" class="tooltip" :style="{ left: `${readout.x}px` }">
       <p class="tooltip-time">{{ timeFormat.format(new Date(readout.at)) }}</p>
-      <p v-for="row in readout.rows" :key="row.entry.provider" class="tooltip-row">
+      <p
+        v-for="row in readout.rows"
+        :key="row.entry.provider"
+        class="tooltip-row"
+      >
         <span class="swatch" :style="{ background: row.entry.color }" />
         {{ row.entry.short }}
         <strong>{{ Math.round(row.point.used) }} %</strong>
@@ -357,15 +382,24 @@ const timeFormat = computed(
 
     <!-- Tabellenansicht derselben Daten für Screenreader und Export. -->
     <table v-if="series.length" class="sr-only">
-      <caption>{{ t('history.caption') }}</caption>
+      <caption>
+        {{
+          t("history.caption")
+        }}
+      </caption>
       <thead>
-        <tr><th>{{ t('history.time') }}</th><th v-for="entry in series" :key="entry.provider">{{ entry.short }}</th></tr>
+        <tr>
+          <th>{{ t("history.time") }}</th>
+          <th v-for="entry in series" :key="entry.provider">
+            {{ entry.short }}
+          </th>
+        </tr>
       </thead>
       <tbody>
         <tr v-for="row in tableRows" :key="row.t">
           <td>{{ timeFormat.format(new Date(row.t)) }}</td>
           <td v-for="(value, index) in row.values" :key="index">
-            {{ value === undefined ? '–' : `${Math.round(value)} %` }}
+            {{ value === undefined ? "–" : `${Math.round(value)} %` }}
           </td>
         </tr>
       </tbody>
@@ -499,8 +533,10 @@ const timeFormat = computed(
 .chart-note {
   position: absolute;
   inset: 0 0 20px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   color: #8f8f99;
   font-size: 0.6875rem;
   line-height: 1.5;
@@ -533,7 +569,12 @@ const timeFormat = computed(
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 10%, rgb(255 255 255 / 5%), transparent 70%);
+  background: linear-gradient(
+    90deg,
+    transparent 10%,
+    rgb(255 255 255 / 5%),
+    transparent 70%
+  );
   animation: chart-shimmer 1.4s ease-in-out infinite;
   transform: translateX(-100%);
 }

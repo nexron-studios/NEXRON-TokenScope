@@ -6,8 +6,23 @@ import ProviderMascot from "@/components/ProviderMascot.vue";
 import UsageMeter from "@/components/UsageMeter.vue";
 import { useResetCountdown } from "@/composables/useResetCountdown";
 import { useI18n } from "@/composables/useI18n";
-import { brandOf, brandVars, SEVERITY, severityOf } from "@/theme/brands";
+import {
+  brandOf,
+  brandVars,
+  SEVERITY,
+  severityOf,
+  type Severity,
+} from "@/theme/brands";
 import type { ProviderUsage, UsageWindow } from "@/api/types";
+import {
+  CircleCheck,
+  ClockFading,
+  OctagonAlert,
+  ScrollText,
+  Timer,
+  TriangleAlert,
+  type LucideIcon,
+} from "@lucide/vue";
 
 const props = defineProps<{
   provider: ProviderUsage;
@@ -79,13 +94,30 @@ const statusHint = computed(() =>
     : t(`provider.error.${props.provider.status}`),
 );
 
-const emptyMessage = computed(() =>
-  language.value === "en"
-    ? statusHint.value || props.provider.message || t("provider.noData")
-    : props.provider.message || statusHint.value || t("provider.noData"),
+// Bei gehaltenen Werten steht in `status` noch der letzte gute Abruf – der
+// Grund für den Aussetzer hängt an `warning_status`.
+const warningHint = computed(() => {
+  const reason = props.provider.warning_status;
+  if (!reason || reason === "ok") return undefined;
+  return t(`provider.error.${reason}`);
+});
+
+const emptyMessage = computed(
+  () => statusHint.value || t("provider.noData"),
 );
 
 const severityLabel = computed(() => t(`provider.status.${severity.value}`));
+
+const SEVERITY_ICON: Record<Severity, LucideIcon> = {
+  ok: CircleCheck,
+  warning: TriangleAlert,
+  critical: OctagonAlert,
+};
+
+// Bei gehaltenen Werten sagt das Symbol das Alter, nicht den Füllstand.
+const stateIcon = computed<LucideIcon>(() =>
+  props.provider.stale ? ClockFading : SEVERITY_ICON[severity.value],
+);
 
 const windowLabel = (window: UsageWindow): string => {
   if (language.value === "de") return window.label;
@@ -190,25 +222,12 @@ const updatedRelative = computed(() => {
                 color: severity === 'ok' ? undefined : SEVERITY[severity].color,
               }"
             >
-              <svg viewBox="0 0 16 16" class="state-icon" aria-hidden="true">
-                <circle
-                  v-if="severity === 'ok'"
-                  cx="8"
-                  cy="8"
-                  r="4.2"
-                  fill="currentColor"
-                />
-                <path
-                  v-else-if="severity === 'warning'"
-                  d="M8 2.4 15 14H1L8 2.4Z"
-                  fill="currentColor"
-                />
-                <path
-                  v-else
-                  d="M8 1.6 14.4 8 8 14.4 1.6 8 8 1.6Z"
-                  fill="currentColor"
-                />
-              </svg>
+              <component
+                :is="stateIcon"
+                class="size-[0.85rem] shrink-0"
+                :stroke-width="2.4"
+                aria-hidden="true"
+              />
               {{ provider.stale ? t("provider.status.stale") : severityLabel }}
             </span>
           </p>
@@ -219,7 +238,12 @@ const updatedRelative = computed(() => {
         </div>
 
         <div class="shrink-0 text-right">
-          <p class="eyebrow">
+          <p class="eyebrow inline-flex items-center gap-1.5">
+            <Timer
+              class="size-[0.8rem] shrink-0"
+              :stroke-width="2.4"
+              aria-hidden="true"
+            />
             {{
               t(
                 provider.stale && isDue
@@ -284,21 +308,27 @@ const updatedRelative = computed(() => {
         :title="
           t('provider.staleTitle', {
             relative: updatedRelative,
-            reason:
-              language === 'en'
-                ? statusHint || t('provider.fetchFailed')
-                : provider.warning || t('provider.fetchFailed'),
+            reason: warningHint || statusHint || t('provider.fetchFailed'),
           })
         "
       >
-        {{
-          language === "en"
-            ? statusHint || t("provider.valueHeld")
-            : provider.warning || t("provider.valueHeld")
-        }}
+        <component
+          :is="warningHint ? TriangleAlert : ClockFading"
+          class="size-3 shrink-0"
+          :stroke-width="2.2"
+          aria-hidden="true"
+        />
+        <span class="truncate">{{
+          warningHint || statusHint || t("provider.valueHeld")
+        }}</span>
       </span>
       <span v-else-if="provider.source === 'logs'" class="foot-note">
-        {{ t("provider.fromLogs") }}
+        <ScrollText
+          class="size-3 shrink-0"
+          :stroke-width="2.2"
+          aria-hidden="true"
+        />
+        <span class="truncate">{{ t("provider.fromLogs") }}</span>
       </span>
     </footer>
   </article>
@@ -400,11 +430,11 @@ const updatedRelative = computed(() => {
 }
 
 .foot-note {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
   max-width: 62%;
-  overflow: hidden;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .eyebrow {
@@ -472,11 +502,6 @@ const updatedRelative = computed(() => {
   font-size: 0.6875rem;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.state-icon {
-  width: 0.7rem;
-  height: 0.7rem;
 }
 
 /* Balken und Begleiter teilen sich eine Zeile: Die Meterspalte ist bei zwei

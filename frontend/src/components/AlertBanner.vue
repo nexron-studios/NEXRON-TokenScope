@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n'
+import { RotateCw, TriangleAlert } from '@lucide/vue'
 
 defineProps<{
   title: string
@@ -16,21 +17,7 @@ const { t } = useI18n()
 <template>
   <div class="alert" role="alert">
     <span class="icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <path
-          d="M12 3.6 22 20.4H2L12 3.6Z"
-          stroke="currentColor"
-          stroke-width="1.7"
-          stroke-linejoin="round"
-        />
-        <path
-          d="M12 10v4.2"
-          stroke="currentColor"
-          stroke-width="1.9"
-          stroke-linecap="round"
-        />
-        <circle cx="12" cy="17.4" r="1.05" fill="currentColor" />
-      </svg>
+      <TriangleAlert class="size-[1.15rem]" />
     </span>
 
     <div class="text">
@@ -39,6 +26,11 @@ const { t } = useI18n()
     </div>
 
     <button type="button" class="retry" :disabled="busy" @click="$emit('retry')">
+      <RotateCw
+        class="size-4 shrink-0"
+        :class="{ 'animate-spin': busy }"
+        aria-hidden="true"
+      />
       {{ busy ? t('alert.checking') : t('alert.retry') }}
     </button>
   </div>
@@ -70,11 +62,6 @@ const { t } = useI18n()
   color: #f29a95;
 }
 
-.icon svg {
-  width: 1.15rem;
-  height: 1.15rem;
-}
-
 .text {
   min-width: 0;
   flex: 1;
@@ -99,6 +86,9 @@ const { t } = useI18n()
 }
 
 .retry {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   min-height: 2.25rem;
   flex-shrink: 0;
   border: 1px solid rgb(208 59 59 / 34%);

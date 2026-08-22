@@ -243,6 +243,7 @@ class UsagePoller:
             update={
                 "stale": True,
                 "warning": failure.message,
+                "warning_status": failure.status,
                 "retry_after_seconds": failure.retry_after_seconds,
             }
         )

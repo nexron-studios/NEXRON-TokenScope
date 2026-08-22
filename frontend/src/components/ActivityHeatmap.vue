@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import type { ActivityCell } from '@/api/types'
+import { CalendarRange } from '@lucide/vue'
 
 const props = defineProps<{ cells: ActivityCell[]; compact: Intl.NumberFormat }>()
 
@@ -98,7 +99,10 @@ const summary = computed(() =>
 <template>
   <figure class="heat">
     <figcaption class="head">
-      <span class="title">{{ t('heat.title') }}</span>
+      <span class="title">
+        <CalendarRange class="size-[0.9rem] shrink-0 opacity-80" aria-hidden="true" />
+        {{ t('heat.title') }}
+      </span>
       <span class="legend" aria-hidden="true">
         {{ t('heat.less') }}
         <i v-for="color in RAMP" :key="color" :style="{ background: color }" />
@@ -146,12 +150,15 @@ const summary = computed(() =>
 
 .head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
 }
 
 .title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   color: #f4f4f6;
   font-size: 0.75rem;
   font-weight: 800;

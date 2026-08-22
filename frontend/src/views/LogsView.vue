@@ -8,6 +8,26 @@ import { useI18n } from "@/composables/useI18n";
 import { brandOf } from "@/theme/brands";
 import { modelLabel } from "@/theme/models";
 import type { LogGroupBy, TokenTotals } from "@/api/types";
+import {
+  BookOpen,
+  CalendarCheck,
+  ChartBar,
+  Clock,
+  Coins,
+  Database,
+  Divide,
+  FileSearch,
+  Flame,
+  Gauge,
+  Inbox,
+  Layers,
+  LoaderCircle,
+  MessageSquare,
+  Sparkles,
+  TriangleAlert,
+  Trophy,
+  type LucideIcon,
+} from "@lucide/vue";
 
 const { settings } = useSettings();
 const { language, locale, t } = useI18n();
@@ -69,6 +89,7 @@ interface Tile {
   key: string;
   label: string;
   value: string;
+  icon: LucideIcon;
   /** Rohwert, wo die Kachel einen aufbereiteten zeigt. */
   title?: string;
   hint?: string;
@@ -82,46 +103,54 @@ const tiles = computed<Tile[]>(() => {
   return [
     {
       key: "sessions",
+      icon: Layers,
       label: t("logs.sessions"),
       value: decimal.value.format(data.sessions),
     },
     {
       key: "messages",
+      icon: MessageSquare,
       label: t("logs.messages"),
       value: decimal.value.format(data.messages),
     },
     {
       key: "tokens",
+      icon: Coins,
       label: t("logs.totalTokens"),
       value: compact.value.format(totalOf(summary.value.totals)),
       hint: t("logs.cacheIncluded"),
     },
     {
       key: "days",
+      icon: CalendarCheck,
       label: t("logs.activeDays"),
       value: decimal.value.format(data.active_days),
       hint: t("logs.ofDays", { days }),
     },
     {
       key: "streak",
+      icon: Flame,
       label: t("logs.currentStreak"),
       value: `${decimal.value.format(data.current_streak)} ${t("unit.dayShort")}`,
       hint: t("logs.daysInRow"),
     },
     {
       key: "longest",
+      icon: Trophy,
       label: t("logs.longestStreak"),
       value: `${decimal.value.format(data.longest_streak)} ${t("unit.dayShort")}`,
       hint: t("logs.inRange"),
     },
     {
       key: "peak",
+      icon: Clock,
       label: t("logs.peakHour"),
       value: data.peak_hour === null ? "–" : `${data.peak_hour}:00`,
       hint: t("logs.mostMessages"),
     },
     {
       key: "model",
+      icon: Sparkles,
       label: t("logs.topModel"),
       value: data.top_model ? modelLabel(data.top_model, language.value) : "–",
       title: data.top_model ?? undefined,
@@ -203,16 +232,19 @@ const facts = computed(() => {
   return [
     {
       key: "session",
+      icon: Divide,
       label: t("logs.messagesPerSession"),
       value: decimal.value.format(perSession),
     },
     {
       key: "day",
+      icon: Gauge,
       label: t("logs.tokensPerDay"),
       value: compact.value.format(perDay),
     },
     {
       key: "cache",
+      icon: Database,
       label: t("logs.fromCache"),
       value: `${Math.round(cacheShare)} %`,
     },
@@ -254,7 +286,10 @@ const comparison = computed(() => {
          mit mehr Farbe und weniger Ruhe. -->
     <ul v-if="insights" class="tiles">
       <li v-for="tile in tiles" :key="tile.key" class="tile">
-        <p class="tile-label">{{ tile.label }}</p>
+        <p class="tile-label">
+          <component :is="tile.icon" class="tile-icon" aria-hidden="true" />
+          <span class="truncate">{{ tile.label }}</span>
+        </p>
         <p class="tile-value" :title="tile.title">{{ tile.value }}</p>
         <p v-if="tile.hint" class="tile-hint">{{ tile.hint }}</p>
       </li>
@@ -268,7 +303,10 @@ const comparison = computed(() => {
 
         <dl class="facts">
           <div v-for="fact in facts" :key="fact.key">
-            <dt>{{ fact.label }}</dt>
+            <dt>
+              <component :is="fact.icon" class="fact-icon" aria-hidden="true" />
+              {{ fact.label }}
+            </dt>
             <dd>{{ fact.value }}</dd>
           </div>
         </dl>
@@ -278,17 +316,22 @@ const comparison = computed(() => {
           class="comparison"
           :title="t('logs.comparisonTitle')"
         >
-          {{ comparison }}
+          <BookOpen class="fact-icon" aria-hidden="true" />
+          <span>{{ comparison }}</span>
         </p>
       </section>
 
       <section class="panel">
         <header class="panel-head">
-          <div>
-            <h2 class="panel-title">{{ t("logs.title") }}</h2>
-            <p class="panel-sub">{{ t("logs.subtitle") }}</p>
+          <div class="flex flex-row items-center gap-2">
+            <ChartBar class="size-6 shrink-0" :stroke-width="3" />
+            <div>
+              <h2 class="panel-title">{{ t("logs.title") }}</h2>
+              <p class="panel-sub">{{ t("logs.subtitle") }}</p>
+            </div>
           </div>
           <p v-if="summary" class="meta">
+            <FileSearch class="size-[0.8rem] shrink-0 opacity-75" aria-hidden="true" />
             {{
               t("logs.files", {
                 count: summary.scanned_files,
@@ -298,17 +341,22 @@ const comparison = computed(() => {
           </p>
         </header>
 
-        <p v-if="error" class="state error">{{ error }}</p>
+        <p v-if="error" class="state error">
+          <TriangleAlert class="state-icon" aria-hidden="true" />
+          {{ error }}
+        </p>
         <p v-else-if="loading && !summary" class="state">
+          <LoaderCircle class="state-icon animate-spin" aria-hidden="true" />
           {{ t("logs.loading") }}
         </p>
         <p v-else-if="summary && !summary.buckets.length" class="state">
+          <Inbox class="state-icon" aria-hidden="true" />
           {{ t("logs.empty") }}
         </p>
 
         <!-- Alle Gruppen, nicht nur die ersten paar: auf einem grossen Schirm
              ist der Platz da, und der Rest ist erscrollbar. -->
-        <ul v-else-if="summary" class="rows pb-2">
+        <ul v-else-if="summary" class="rows pb-4">
           <li
             v-for="bucket in summary.buckets"
             :key="`${bucket.provider}-${bucket.key}`"
@@ -421,9 +469,11 @@ const comparison = computed(() => {
 }
 
 .meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  text-align: right;
 }
 
 .tiles {
@@ -442,11 +492,19 @@ const comparison = computed(() => {
 }
 
 .tile-label {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
   color: #a8a8b2;
   font-size: 0.625rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+}
+
+.tile-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+  opacity: 0.8;
 }
 
 .tile-value {
@@ -483,8 +541,18 @@ const comparison = computed(() => {
 }
 
 .facts dt {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   color: #a8a8b2;
   font-size: 0.6875rem;
+}
+
+.fact-icon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  flex: none;
+  opacity: 0.75;
 }
 
 .facts dd {
@@ -495,6 +563,9 @@ const comparison = computed(() => {
 }
 
 .comparison {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   color: #9a9aa4;
   font-size: 0.625rem;
   line-height: 1.4;
@@ -514,10 +585,6 @@ const comparison = computed(() => {
   /* Die letzte sichtbare Zeile blendet aus, statt hart abgeschnitten zu
      werden – so ist zu sehen, dass darunter noch etwas kommt. */
   mask-image: linear-gradient(to bottom, #000 calc(100% - 1.4rem), transparent);
-  /* Die Maske haengt am Element, nicht am Inhalt: Ohne diesen Auslauf bliebe
-     der letzte Eintrag auch am Ende der Liste ausgeblendet. Der Wert
-     entspricht der Hoehe des Verlaufs. */
-  padding-bottom: 1.4rem;
 }
 
 .row-head {
@@ -574,10 +641,20 @@ const comparison = computed(() => {
 }
 
 .state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   color: #bcbcc5;
   font-size: 0.8125rem;
   padding: 1.5rem 0;
-  text-align: center;
+}
+
+.state-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  opacity: 0.85;
 }
 
 .state.error {
