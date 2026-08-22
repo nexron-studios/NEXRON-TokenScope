@@ -50,6 +50,10 @@ const emit = defineEmits<{
 const options = defineModel<string[]>({ required: true })
 ```
 
+The script block wires the template — it is not where logic lives. Once it
+carries large builders, formatters or aggregations, those move out into
+`src/utils/` or a composable; see `file-size.md`.
+
 ## Template
 
 Styling goes here as Tailwind utilities, never into a `<style scoped>` block —

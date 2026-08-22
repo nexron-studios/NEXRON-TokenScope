@@ -53,9 +53,19 @@ Bind an object or array, keep the static utilities in `class`:
 
 ## Existing components
 
-Components that still carry a scoped block are not rewritten on sight. When
-their markup is being worked on anyway, the styling that is touched moves into
-the template.
+Most components in this project still carry a `<style scoped>` block. That is
+legacy, not the pattern — it is being removed, not preserved.
+
+- Never add a new `<style>` block, and never add a rule to an existing one.
+  If markup being worked on needs styling, it gets Tailwind utilities.
+- When a component is touched anyway, migrate the rules that belong to the
+  touched markup into the template and delete them from the block. Delete the
+  whole block once it is empty.
+- No blanket rewrites on sight: a file nobody is working on keeps its block
+  until there is a reason to open it.
+- The exception stays what `main.css` owns — keyframes, pseudo-elements,
+  media queries, `@theme` tokens. Those move to `src/assets/main.css`, not
+  into a component.
 
 ## Debug helpers
 

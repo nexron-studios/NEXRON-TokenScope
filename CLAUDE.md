@@ -12,6 +12,8 @@ reload; the backend stays on 8787 and serves `/api`).
 @.claude/rules/styling.md
 @.claude/rules/code-style.md
 @.claude/rules/component-structure.md
+@.claude/rules/ui-components.md
+@.claude/rules/file-size.md
 @.claude/rules/composables.md
 @.claude/rules/types.md
 @.claude/rules/api-services.md

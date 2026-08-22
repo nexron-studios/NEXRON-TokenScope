@@ -7,6 +7,7 @@ Each component, composable, and function does one thing. If you need "and" to de
 
 - Components: extract sub-components when a `<template>` grows large or handles multiple concerns.
 - Functions: keep them short and focused. If a function needs scrolling, break it up.
+- Files: `.vue` files stay under 500 lines. Logic that outgrows the component moves into `src/utils/` or a composable — see `file-size.md`.
 
 ## Always use arrow functions
 
