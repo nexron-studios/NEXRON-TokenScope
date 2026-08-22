@@ -126,13 +126,18 @@ if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
 $indexHtml = Join-Path $frontend 'dist\index.html'
 
 # Neu bauen, wenn der Build fehlt oder aelter als die Quellen ist.
-$needsBuild = -not (Test-Path $indexHtml)
-if (-not $needsBuild) {
-    $built = (Get-Item $indexHtml).LastWriteTime
-    $newest = Get-ChildItem (Join-Path $frontend 'src') -Recurse -File |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-    if ($newest -and $newest.LastWriteTime -gt $built) { $needsBuild = $true }
+# Mit -Dev zeigen Browser und Huelle den Vite-Server; das dist/ wird dann gar
+# nicht ausgeliefert, ein Build waere nur Wartezeit vor dem Hot-Reload.
+$needsBuild = $false
+if (-not $Dev) {
+    $needsBuild = -not (Test-Path $indexHtml)
+    if (-not $needsBuild) {
+        $built = (Get-Item $indexHtml).LastWriteTime
+        $newest = Get-ChildItem (Join-Path $frontend 'src') -Recurse -File |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+        if ($newest -and $newest.LastWriteTime -gt $built) { $needsBuild = $true }
+    }
 }
 
 if ($needsBuild) {
@@ -147,13 +152,22 @@ if ($Desktop) { Confirm-DesktopApp }
 # Ein bereits laufender Dienst wuerde sonst nur eine kryptische Socket-Meldung
 # aus uvicorn produzieren.
 $busy = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
-if ($busy -and $Desktop) {
+$backendRuns = [bool]$busy
+
+# Mit -Dev ist ein laufendes Backend kein Abbruchgrund: Gebraucht wird hier der
+# Vite-Server, das Backend liefert nur noch /api. Ohne diesen Zweig endete
+# `-Dev` bei laufendem Dienst vor dem Start von Vite - und der Browser zeigte
+# den statischen Build auf Port $Port, also ohne Hot-Reload.
+if ($busy -and $Dev) {
+    Write-Step "Backend laeuft bereits auf Port $Port - starte nur den Dev-Server"
+}
+if ($busy -and -not $Dev -and $Desktop) {
     # Kein Grund abzubrechen: Das Fenster haengt sich einfach an den laufenden Dienst.
     Write-Step "Backend laeuft bereits auf Port $Port - oeffne nur das Fenster"
     Start-Process -FilePath $desktopExe -ArgumentList (Get-DesktopArgs $Port)
     exit 0
 }
-if ($busy) {
+if ($busy -and -not $Dev) {
     Write-Host "Port $Port ist bereits belegt (PID $($busy[0].OwningProcess))." -ForegroundColor Yellow
     Write-Host "Laeuft der Dienst schon? -> http://127.0.0.1:$Port/" -ForegroundColor Yellow
     Write-Host "Sonst beenden mit: Stop-Process -Id $($busy[0].OwningProcess)" -ForegroundColor Yellow
@@ -164,8 +178,20 @@ $url = if ($Dev) { 'http://127.0.0.1:5173/' } else { "http://127.0.0.1:$Port/" }
 $vite = $null
 
 if ($Dev) {
+    # Ein verwaister Vite aus einem frueheren Lauf wuerde den Port halten; der
+    # neue Server wiche stillschweigend auf 5174 aus, waehrend Browser und
+    # Huelle weiter auf 5173 schauen. Darum vorher pruefen.
+    $viteBusy = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue
+    if ($viteBusy) {
+        Write-Host "Port 5173 ist belegt (PID $($viteBusy[0].OwningProcess)) - vermutlich ein alter Dev-Server." -ForegroundColor Yellow
+        Write-Host "Beenden mit: Stop-Process -Id $($viteBusy[0].OwningProcess) -Force" -ForegroundColor Yellow
+        exit 1
+    }
+
     Write-Step 'Starte den Vite-Dev-Server auf Port 5173'
-    $vite = Start-Process -FilePath 'npm.cmd' -ArgumentList 'run', 'dev' `
+    # --strictPort: lieber ein sichtbarer Fehler als ein Server auf einem Port,
+    # den niemand aufruft.
+    $vite = Start-Process -FilePath 'npm.cmd' -ArgumentList 'run', 'dev', '--', '--strictPort' `
         -WorkingDirectory $frontend -PassThru
 }
 
@@ -178,8 +204,12 @@ if ($Desktop) {
     $desktopApp = Start-Process -FilePath $desktopExe -ArgumentList (Get-DesktopArgs $desktopPort) -PassThru
 }
 
+# Im Dev-Betrieb muss Vite antworten, nicht das Backend - sonst oeffnet sich der
+# Browser bei laufendem Backend sofort und laeuft in einen leeren Port.
+$probe = if ($Dev) { $url } else { "http://127.0.0.1:$Port/api/health" }
+
 if (-not $NoBrowser -and -not $Desktop) {
-    # Erst oeffnen, wenn das Backend antwortet - sonst zeigt der Browser einen Fehler.
+    # Erst oeffnen, wenn die Adresse antwortet - sonst zeigt der Browser einen Fehler.
     Start-Job -ScriptBlock {
         param($target, $probe)
         for ($i = 0; $i -lt 40; $i++) {
@@ -189,21 +219,34 @@ if (-not $NoBrowser -and -not $Desktop) {
                 return
             } catch { Start-Sleep -Milliseconds 500 }
         }
-    } -ArgumentList $url, "http://127.0.0.1:$Port/api/health" | Out-Null
+    } -ArgumentList $url, $probe | Out-Null
 }
 
-Write-Step "Backend laeuft auf http://127.0.0.1:$Port - Beenden mit Strg+C"
+if ($Dev) { Write-Step "Oberflaeche mit Hot-Reload auf $url" }
+if ($backendRuns) {
+    Write-Step "Backend laeuft bereits auf http://127.0.0.1:$Port - Beenden mit Strg+C"
+} else {
+    Write-Step "Backend laeuft auf http://127.0.0.1:$Port - Beenden mit Strg+C"
+}
 Write-Host ""
 
 $env:PYTHONPATH = $backend
 Push-Location $backend
 try {
-    & $python -m uvicorn app.main:app --host 127.0.0.1 --port $Port
+    if ($backendRuns) {
+        # Das Backend haelt ein anderes Fenster offen; hier bleibt nur der
+        # Dev-Server im Vordergrund, damit Strg+C weiterhin alles beendet.
+        if ($vite) { Wait-Process -Id $vite.Id }
+    } else {
+        & $python -m uvicorn app.main:app --host 127.0.0.1 --port $Port
+    }
 } finally {
     Pop-Location
     # Weder Dev-Server noch Fenster verwaist zuruecklassen.
     if ($vite -and -not $vite.HasExited) {
-        Stop-Process -Id $vite.Id -Force -ErrorAction SilentlyContinue
+        # npm.cmd startet node als Kindprozess; ohne /T bliebe der Dev-Server
+        # auf 5173 als Waise zurueck und blockierte den naechsten Start.
+        taskkill /PID $vite.Id /T /F *> $null
     }
     if ($desktopApp -and -not $desktopApp.HasExited) {
         Stop-Process -Id $desktopApp.Id -Force -ErrorAction SilentlyContinue

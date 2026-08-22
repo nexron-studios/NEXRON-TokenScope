@@ -11,7 +11,6 @@ import type { ProviderUsage, UsageWindow } from "@/api/types";
 
 const props = defineProps<{
   provider: ProviderUsage;
-  large?: boolean;
   /** Das Frontend erreicht sein Backend nicht – der Begleiter zeigt es mit. */
   backendDown?: boolean;
 }>();
@@ -213,7 +212,7 @@ const updatedRelative = computed(() => {
               {{ provider.stale ? t("provider.status.stale") : severityLabel }}
             </span>
           </p>
-          <p class="figure" :class="{ 'figure-lg': large }" :style="quotaStyle">
+          <p class="figure" :style="quotaStyle">
             {{ Math.round(primary.remaining_percent)
             }}<span class="unit">%</span>
           </p>
@@ -267,7 +266,6 @@ const updatedRelative = computed(() => {
             provider.id === 'codex' ? 'cloudling-error.mp4' : 'clawd-error.mp4'
           "
         />
-        asdasdasda
       </div>
       <div class="empty-copy">
         <p class="empty-title">{{ t("provider.noQuota") }}</p>
@@ -427,10 +425,6 @@ const updatedRelative = computed(() => {
   transition:
     color 220ms ease,
     text-shadow 220ms ease;
-}
-
-.figure-lg {
-  font-size: 3.4rem;
 }
 
 .unit {
@@ -643,10 +637,6 @@ const updatedRelative = computed(() => {
 
   .figure {
     font-size: 2.35rem;
-  }
-
-  .figure-lg {
-    font-size: 2.8rem;
   }
 
   .countdown {

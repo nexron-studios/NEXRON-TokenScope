@@ -1,33 +1,35 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useNow } from '@vueuse/core'
-import { useI18n } from '@/composables/useI18n'
-import nexronLogo from '@/assets/logos/nexron_logo.svg'
+import { computed } from "vue";
+import { useNow } from "@vueuse/core";
+import { useI18n } from "@/composables/useI18n";
+import nexronLogo from "@/assets/logos/nexron_logo.svg";
 
-export type ViewId = 'dashboard' | 'logs' | 'settings'
+export type ViewId = "dashboard" | "logs" | "settings";
 
 defineProps<{
-  view: ViewId
-  loading: boolean
-  connected: boolean
-  demo: boolean
-}>()
+  view: ViewId;
+  loading: boolean;
+  connected: boolean;
+  demo: boolean;
+}>();
 
-defineEmits<{ navigate: [ViewId]; refresh: [] }>()
+defineEmits<{ navigate: [ViewId]; refresh: [] }>();
 
-const now = useNow({ interval: 10_000 })
-const { locale, t } = useI18n()
+const now = useNow();
+const { locale, t } = useI18n();
 const clock = computed(() =>
-  new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit' }).format(
-    now.value,
-  ),
-)
+  new Intl.DateTimeFormat(locale.value, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(now.value),
+);
 
 const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
-  { id: 'dashboard', label: t('nav.dashboard') },
-  { id: 'logs', label: t('nav.logs') },
-  { id: 'settings', label: t('nav.settings') },
-])
+  { id: "dashboard", label: t("nav.dashboard") },
+  { id: "logs", label: t("nav.logs") },
+  { id: "settings", label: t("nav.settings") },
+]);
 </script>
 
 <template>
@@ -41,7 +43,7 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
       <span class="divider" />
       <span class="state" :class="connected ? 'up' : 'down'">
         <span class="dot" />
-        {{ connected ? t('nav.local') : t('nav.offline') }}
+        {{ connected ? t("nav.local") : t("nav.offline") }}
       </span>
       <span v-if="demo" class="demo">Demo</span>
     </div>
@@ -66,7 +68,12 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
         :aria-label="t('nav.refresh')"
         @click="$emit('refresh')"
       >
-        <svg viewBox="0 0 24 24" class="size-5" :class="{ spin: loading }" fill="none">
+        <svg
+          viewBox="0 0 24 24"
+          class="size-5"
+          :class="{ spin: loading }"
+          fill="none"
+        >
           <path
             d="M20 11a8 8 0 0 0-14.9-4M4 5v5h5m-5 3a8 8 0 0 0 14.9 4M20 19v-5h-5"
             stroke="currentColor"
@@ -174,7 +181,9 @@ const tabs = computed<Array<{ id: ViewId; label: string }>>(() => [
   font-weight: 700;
   padding: 0 0.95rem;
   touch-action: manipulation;
-  transition: background 140ms ease, color 140ms ease;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
 }
 
 .tab:active {

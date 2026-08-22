@@ -16,7 +16,6 @@ const props = defineProps<{
   loading?: boolean
   historyLoading?: boolean
   placeholderCount?: number
-  largeText: boolean
 }>()
 
 defineEmits<{ retry: [] }>()
@@ -41,7 +40,6 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
         v-for="provider in providers"
         :key="provider.id"
         :provider="provider"
-        :large="largeText"
         :backend-down="Boolean(backendError)"
       />
     </div>

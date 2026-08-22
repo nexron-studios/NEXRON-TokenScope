@@ -93,10 +93,6 @@ const DE = {
   "settings.reset": "Zurücksetzen",
   "settings.confirm": "Wirklich?",
   "settings.localOnly": "Nur lokale Anzeigeoptionen",
-  "settings.largeText": "Große Schrift",
-  "settings.largeTextHint": "Kennzahlen aus zwei Metern Abstand ablesbar",
-  "settings.kiosk": "Kiosk-Modus",
-  "settings.kioskHint": "Mauszeiger aus, keine Hover-Zustände",
   "settings.night": "Nachtmodus",
   "settings.nightHint":
     "Dimmt das Panel, ohne die Hintergrundbeleuchtung zu ändern",
@@ -261,10 +257,6 @@ const EN: Record<TranslationKey, string> = {
   "settings.reset": "Reset",
   "settings.confirm": "Are you sure?",
   "settings.localOnly": "Local display options only",
-  "settings.largeText": "Large text",
-  "settings.largeTextHint": "Readable from two metres away",
-  "settings.kiosk": "Kiosk mode",
-  "settings.kioskHint": "Hide the pointer and hover states",
   "settings.night": "Night mode",
   "settings.nightHint": "Dims the panel without changing the backlight",
   "settings.language": "Language",
@@ -347,12 +339,23 @@ export function useI18n() {
   const language = computed(() => settings.value.language);
   const locale = computed(() => (language.value === "en" ? "en-US" : "de-DE"));
 
-  const t = (key: TranslationKey, params: TranslationParams = {}) => {
-    let message = MESSAGES[language.value][key];
+  /**
+   * Der Rueckgabetyp ist der deutsche Text als Literal, nicht `string`. Das
+   * kostet zur Laufzeit nichts und macht den Editor auskunftsfaehig: Beim
+   * Zeigen auf `t("provider.noQuota")` steht der Satz im Tooltip, auch mitten
+   * im Template. Die Texte liegen als TS-Objekt hier und nicht als
+   * Locale-Datei, also kann keine i18n-Erweiterung sie einblenden - der Typ
+   * uebernimmt das. Ausgeliefert wird natuerlich die eingestellte Sprache.
+   */
+  const t = <K extends TranslationKey>(
+    key: K,
+    params: TranslationParams = {},
+  ): (typeof DE)[K] => {
+    let message: string = MESSAGES[language.value][key];
     for (const [name, value] of Object.entries(params)) {
       message = message.replaceAll(`{${name}}`, String(value));
     }
-    return message;
+    return message as (typeof DE)[K];
   };
 
   return { language, locale, t };

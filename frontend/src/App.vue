@@ -89,9 +89,7 @@ watch(
 const connected = computed(() => !backendError.value && Boolean(usage.value))
 
 const shellClass = computed(() => ({
-  kiosk: settings.value.kioskMode,
   night: settings.value.nightMode,
-  large: settings.value.largeText,
 }))
 </script>
 
@@ -116,7 +114,6 @@ const shellClass = computed(() => ({
       :loading="loading"
       :history-loading="historyLoading"
       :placeholder-count="placeholderCount"
-      :large-text="settings.largeText"
       @retry="refreshNow"
     />
     <LogsView v-else-if="view === 'logs'" />
@@ -144,18 +141,8 @@ const shellClass = computed(() => ({
   padding: 0.7rem 0.9rem 0.5rem;
 }
 
-/* Kiosk: kein Zeiger, keine Textauswahl beim Wischen. */
-.shell.kiosk {
-  cursor: none;
-  user-select: none;
-}
-
 .shell.night {
   filter: brightness(0.62) saturate(0.9);
-}
-
-.shell.large {
-  font-size: 1.06rem;
 }
 
 .foot {

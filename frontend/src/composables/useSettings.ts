@@ -17,12 +17,8 @@ export interface AppSettings {
   historyHours: HistoryRange
   /** Tage, über die die JSONL-Logs ausgewertet werden. */
   logDays: number
-  /** Kiosk: Mauszeiger ausblenden, keine Hover-Zustände. */
-  kioskMode: boolean
   /** Nachtmodus dimmt das Panel, ohne die Hintergrundbeleuchtung zu ändern. */
   nightMode: boolean
-  /** Größere Typo zum Ablesen aus Entfernung. */
-  largeText: boolean
 }
 
 const DEFAULTS: AppSettings = {
@@ -32,9 +28,7 @@ const DEFAULTS: AppSettings = {
   enabledProviders: { claude: true, codex: true },
   historyHours: 24,
   logDays: 7,
-  kioskMode: false,
   nightMode: false,
-  largeText: false,
 }
 
 const SETTINGS_KEY = 'nexron-tokenscope:settings'

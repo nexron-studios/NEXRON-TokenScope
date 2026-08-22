@@ -111,16 +111,6 @@ const lastPoll = computed(() => {
       <template v-if="section === 'anzeige'">
         <div class="stack">
           <TouchToggle
-            v-model="settings.largeText"
-            :label="t('settings.largeText')"
-            :hint="t('settings.largeTextHint')"
-          />
-          <TouchToggle
-            v-model="settings.kioskMode"
-            :label="t('settings.kiosk')"
-            :hint="t('settings.kioskHint')"
-          />
-          <TouchToggle
             v-model="settings.nightMode"
             :label="t('settings.night')"
             :hint="t('settings.nightHint')"

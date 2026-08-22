@@ -285,7 +285,7 @@ const comparison = computed(() => {
       <section class="panel">
         <header class="panel-head">
           <div>
-            <h2 class="panel-title">{{ t("logs.title") }}asdasd</h2>
+            <h2 class="panel-title">{{ t("logs.title") }}</h2>
             <p class="panel-sub">{{ t("logs.subtitle") }}</p>
           </div>
           <p v-if="summary" class="meta">
@@ -308,7 +308,7 @@ const comparison = computed(() => {
 
         <!-- Alle Gruppen, nicht nur die ersten paar: auf einem grossen Schirm
              ist der Platz da, und der Rest ist erscrollbar. -->
-        <ul v-else-if="summary" class="rows">
+        <ul v-else-if="summary" class="rows pb-2">
           <li
             v-for="bucket in summary.buckets"
             :key="`${bucket.provider}-${bucket.key}`"
@@ -321,8 +321,8 @@ const comparison = computed(() => {
                 />
                 {{
                   summary.group_by === "model"
-                    ? modelLabel(bucket.label, language)
-                    : bucket.label
+                    ? modelLabel(bucket.label, language).toLocaleUpperCase()
+                    : bucket.label.toLocaleUpperCase()
                 }}
               </span>
               <span class="row-value">{{
@@ -514,6 +514,10 @@ const comparison = computed(() => {
   /* Die letzte sichtbare Zeile blendet aus, statt hart abgeschnitten zu
      werden – so ist zu sehen, dass darunter noch etwas kommt. */
   mask-image: linear-gradient(to bottom, #000 calc(100% - 1.4rem), transparent);
+  /* Die Maske haengt am Element, nicht am Inhalt: Ohne diesen Auslauf bliebe
+     der letzte Eintrag auch am Ende der Liste ausgeblendet. Der Wert
+     entspricht der Hoehe des Verlaufs. */
+  padding-bottom: 1.4rem;
 }
 
 .row-head {

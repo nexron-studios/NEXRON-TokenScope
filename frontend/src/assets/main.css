@@ -21,10 +21,21 @@
 }
 
 /* `inline`, damit Tailwind den Wert einsetzt statt auf die Theme-Variable zu
-   verweisen: `--brand-accent` steht nicht hier, sondern wird pro Kachel per
-   `:style` gesetzt (brandVars). Nur so löst sie am Element auf. */
+   verweisen: Diese Farben stehen nicht hier, sondern werden pro Kachel per
+   `:style` gesetzt (brandVars). Nur so lösen sie am Element auf – und nur so
+   gibt es dafür lesbare Utilities (`text-brand-ink-subtle`) statt
+   `text-[var(--brand-ink-subtle)]` im Template.
+   Sie greifen ausschließlich innerhalb einer Kachel: Ohne gesetzte Variable
+   bleibt die Eigenschaft leer. */
 @theme inline {
   --color-brand-accent: var(--brand-accent);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-surface-raised: var(--brand-surface-raised);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-ink-muted: var(--brand-ink-muted);
+  --color-brand-ink-subtle: var(--brand-ink-subtle);
+  --color-brand-hairline: var(--brand-hairline);
+  --color-brand-track: var(--brand-track);
 }
 
 :root {
@@ -112,4 +123,49 @@ button:focus-visible,
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* --- Debug-Hilfen ----------------------------------------------------------
+   Zum Hinschauen waehrend der Arbeit: `class="debug-red"` an ein Element
+   haengen, und es bekommt Rahmen und Toenung in dieser Farbe. Der Rahmen liegt
+   als `outline` nach innen versetzt auf, verschiebt also nichts im Layout, und
+   `!important` sorgt dafuer, dass auch scoped Styles einer Komponente ihn nicht
+   ueberschreiben. Vor dem Commit wieder entfernen. */
+.debug-red,
+.debug-orange,
+.debug-yellow,
+.debug-green,
+.debug-cyan,
+.debug-blue,
+.debug-purple,
+.debug-pink,
+.debug-white,
+.debug-black {
+  outline: 2px solid var(--debug-color) !important;
+  /* Nach innen, damit verschachtelte Kaesten sich nicht gegenseitig verdecken. */
+  outline-offset: -2px !important;
+  background-color: color-mix(in srgb, var(--debug-color) 18%, transparent) !important;
+}
+
+.debug-red { --debug-color: #ff2d55; }
+.debug-orange { --debug-color: #ff9f0a; }
+.debug-yellow { --debug-color: #ffd60a; }
+.debug-green { --debug-color: #32d74b; }
+.debug-cyan { --debug-color: #40c8e0; }
+.debug-blue { --debug-color: #0a84ff; }
+.debug-purple { --debug-color: #bf5af0; }
+.debug-pink { --debug-color: #ff2ec4; }
+.debug-white { --debug-color: #ffffff; }
+.debug-black { --debug-color: #000000; }
+
+/* Nur der Rahmen, ohne Toenung - wenn die eigene Flaeche sichtbar bleiben soll. */
+.debug-outline {
+  background-color: transparent !important;
+}
+
+/* Zeigt die direkten Kinder eines Kastens - dafuer, dass man sieht, wo der
+   Platz eigentlich hingeht. */
+.debug-kids > * {
+  outline: 1px dashed rgb(255 255 255 / 45%) !important;
+  outline-offset: -1px !important;
 }
