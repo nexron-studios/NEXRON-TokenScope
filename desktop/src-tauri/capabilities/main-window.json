@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Das Dashboard darf die Fenstergroesse setzen - die Stufe steht in seinen Einstellungen. Dafuer muss es auch den Vollbildmodus lesen und verlassen koennen.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["http://127.0.0.1:*"]
+  },
+  "permissions": [
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-size"
+  ]
+}

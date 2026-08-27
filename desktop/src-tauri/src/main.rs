@@ -145,11 +145,16 @@ fn start_and_open(
             options.port
         ));
     } else if !options.spawn_backend {
-        status(&format!(
-            "Auf Port {} lauscht nichts, und --no-backend verbietet den Start",
-            options.port
-        ));
-        return;
+        // `--no-backend` heisst "starte selbst keines" - nicht "gib auf".
+        // start.ps1 oeffnet die Huelle absichtlich vor uvicorn und verlaesst
+        // sich darauf, dass der Splash wartet, bis der Port antwortet.
+        log(
+            &handle,
+            &format!(
+                "Auf Port {} lauscht noch nichts - warte auf den fremd gestarteten Dienst",
+                options.port
+            ),
+        );
     } else {
         match backend::locate_root(options.root.clone()) {
             Some(root) => {
@@ -267,7 +272,12 @@ fn build_main_window(
     // Bildschirm gross, auf dem es gerade steht.
     if let Some((position, size)) = bounds {
         let _ = window.set_position(position);
-        let _ = window.set_size(size);
+        // Die Monitorgroesse ist nur im Vollbild gemeint. Im Fenstermodus
+        // gehoert die Groesse dem Dashboard: es setzt die in seinen
+        // Einstellungen gewaehlte Stufe selbst.
+        if options.fullscreen {
+            let _ = window.set_size(size);
+        }
     }
 
     let _ = window.show();

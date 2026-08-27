@@ -6,6 +6,7 @@ import type { ViewId } from '@/components/AppHeader.vue'
 import { useHistory } from '@/composables/useHistory'
 import { useI18n } from '@/composables/useI18n'
 import { useSettings } from '@/composables/useSettings'
+import { useDesktopWindow } from '@/composables/useDesktopWindow'
 import { useUsage } from '@/composables/useUsage'
 import { useUsageRefresh } from '@/composables/useUsageRefresh'
 import DashboardView from '@/views/DashboardView.vue'
@@ -17,6 +18,8 @@ const { t } = useI18n()
 const { usage, health, providers, isDemo, loading, backendError, backendHint, load } =
   useUsage()
 const { history, loading: historyLoading, load: loadHistory } = useHistory()
+
+useDesktopWindow()
 
 const placeholderCount = computed(
   () => Object.values(settings.value.enabledProviders).filter(Boolean).length,

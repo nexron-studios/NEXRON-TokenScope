@@ -7,17 +7,15 @@ Local dashboard for Claude Code / Codex quota. FastAPI backend in `backend/`
 Run it with `.\start.ps1` (add `-Dev` for the Vite dev server on 5173 with hot
 reload; the backend stays on 8787 and serves `/api`).
 
-## Rules
+## What deviates here
 
-@.claude/rules/styling.md
-@.claude/rules/code-style.md
-@.claude/rules/component-structure.md
-@.claude/rules/ui-components.md
-@.claude/rules/file-size.md
-@.claude/rules/composables.md
-@.claude/rules/types.md
-@.claude/rules/api-services.md
-@.claude/rules/stores.md
-@.claude/rules/error-handling.md
-@.claude/rules/i18n.md
-@.claude/rules/testing.md
+- **The web conventions apply to `frontend/` only.** `backend/` is FastAPI in
+  Python and `desktop/` is Tauri — Vue, Pinia, Tailwind and vue-i18n have no
+  bearing there, and the NestJS rules are not loaded at all.
+- **Every `.vue` file still carries a `<style scoped>` block** (15 of 15). That is
+  legacy, not the pattern. Migrate the rules for markup you are touching anyway
+  and delete the block once it is empty — no blanket rewrites on sight.
+- Per-element runtime values come from `brandVars` as `:style` bindings.
+
+Everything else is loaded globally from `~/.claude/rules/` — nothing to import
+here.

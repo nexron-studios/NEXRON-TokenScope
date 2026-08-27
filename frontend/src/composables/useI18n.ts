@@ -97,6 +97,13 @@ const DE = {
   "settings.nightHint":
     "Dimmt das Panel, ohne die Hintergrundbeleuchtung zu ändern",
   "settings.language": "Sprache",
+  "settings.windowSize": "Fenstergröße",
+  "settings.windowSizeHint": "Ändert die Größe des Programmfensters.",
+  "settings.windowSizeBrowserHint":
+    "Wirkt nur im Desktop-Fenster – im Browser bestimmt das Fenster der Browser.",
+  "settings.windowSize.small": "Klein",
+  "settings.windowSize.medium": "Mittel",
+  "settings.windowSize.large": "Groß",
   "settings.providers": "Sichtbare Anbieter",
   "settings.visible": "sichtbar",
   "settings.off": "aus",
@@ -260,6 +267,13 @@ const EN: Record<TranslationKey, string> = {
   "settings.night": "Night mode",
   "settings.nightHint": "Dims the panel without changing the backlight",
   "settings.language": "Language",
+  "settings.windowSize": "Window size",
+  "settings.windowSizeHint": "Changes the size of the application window.",
+  "settings.windowSizeBrowserHint":
+    "Only affects the desktop window — in a browser the browser decides.",
+  "settings.windowSize.small": "Small",
+  "settings.windowSize.medium": "Medium",
+  "settings.windowSize.large": "Large",
   "settings.providers": "Visible providers",
   "settings.visible": "visible",
   "settings.off": "off",

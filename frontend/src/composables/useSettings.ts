@@ -4,6 +4,9 @@ import type { Language } from '@/composables/useI18n'
 
 export type HistoryRange = 6 | 24 | 72 | 168
 
+export const windowSizeList = ['small', 'medium', 'large'] as const
+export type WindowSize = (typeof windowSizeList)[number]
+
 export interface AppSettings {
   /** Sprache der lokalen Oberfläche. */
   language: Language
@@ -19,6 +22,8 @@ export interface AppSettings {
   logDays: number
   /** Nachtmodus dimmt das Panel, ohne die Hintergrundbeleuchtung zu ändern. */
   nightMode: boolean
+  /** Fenstergröße der Desktop-Hülle – ohne Wirkung im Browser. */
+  windowSize: WindowSize
 }
 
 const DEFAULTS: AppSettings = {
@@ -29,6 +34,7 @@ const DEFAULTS: AppSettings = {
   historyHours: 24,
   logDays: 7,
   nightMode: false,
+  windowSize: 'medium',
 }
 
 const SETTINGS_KEY = 'nexron-tokenscope:settings'

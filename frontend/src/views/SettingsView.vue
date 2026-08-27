@@ -3,7 +3,8 @@ import { computed, ref } from 'vue'
 import ProviderMark from '@/components/ProviderMark.vue'
 import TouchSegmented from '@/components/TouchSegmented.vue'
 import TouchToggle from '@/components/TouchToggle.vue'
-import { useSettings } from '@/composables/useSettings'
+import { useSettings, windowSizeList } from '@/composables/useSettings'
+import { isDesktopShell } from '@/composables/useDesktopWindow'
 import { useI18n } from '@/composables/useI18n'
 import { BRANDS } from '@/theme/brands'
 import type { HealthResponse, ProviderId } from '@/api/types'
@@ -77,6 +78,19 @@ const LANGUAGES = [
   { value: 'de', label: 'DE' },
   { value: 'en', label: 'EN' },
 ]
+
+const windowSizes = computed(() =>
+  windowSizeList.map((value) => ({
+    value,
+    label: t(`settings.windowSize.${value}`),
+  })),
+)
+
+const windowSizeHint = computed(() =>
+  isDesktopShell()
+    ? t('settings.windowSizeHint')
+    : t('settings.windowSizeBrowserHint'),
+)
 
 const PROVIDERS: ProviderId[] = ['claude', 'codex']
 
@@ -162,6 +176,15 @@ const lastPoll = computed(() => {
             :label="t('settings.language')"
             :options="LANGUAGES"
           />
+          <TouchSegmented
+            v-model="settings.windowSize"
+            :label="t('settings.windowSize')"
+            :options="windowSizes"
+          />
+          <p class="note">
+            <Info class="note-icon" aria-hidden="true" />
+            <span>{{ windowSizeHint }}</span>
+          </p>
         </div>
 
         <div class="stack">

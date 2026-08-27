@@ -158,8 +158,13 @@ Drei Ansichten:
 - **Kontingent** – Restkontingent je Fenster, Reset-Countdown, Verlaufschart
 - **Verbrauch** – Kennzahlen, Wochenraster und Token aus den JSONL-Logs,
   gruppiert nach Projekt, Modell oder Tag
-- **Einstellungen** – Anzeige (Nachtmodus, Sprache), Daten (Intervall,
-  Zeiträume), Dienst (gefundene Quellen, letzter Poll, Bindung)
+- **Einstellungen** – Anzeige (Nachtmodus, Sprache, Fenstergröße), Daten
+  (Intervall, Zeiträume), Dienst (gefundene Quellen, letzter Poll, Bindung)
+
+**Fenstergröße** setzt das Fenster der Desktop-Hülle auf 1024 × 640, 1280 × 800
+oder 1600 × 1000. Im Browser ist die Stufe nur gespeichert – dort bestimmt der
+Browser die Größe. Läuft das Fenster im Vollbild, führt eine Auswahl heraus; ein
+Kiosk-Start im Vollbild bleibt davon unberührt.
 
 ![Verbrauchsansicht mit Kennzahlen, Wochenraster und Auswertung der JSONL-Logs](docs/screenshots/verbrauch.png)
 
