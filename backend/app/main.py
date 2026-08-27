@@ -109,7 +109,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         @app.get("/{_path:path}", include_in_schema=False)
         async def serve_spa(_path: str) -> FileResponse:
-            return FileResponse(dist / "index.html")
+            # Der Einstiegspunkt verweist auf gehashte Bundles und darf deshalb
+            # nie aus dem Cache kommen: Ohne diesen Kopf hielt die WebView der
+            # Desktop-Huelle ihn fuer frisch und zeigte nach einem neuen Build
+            # weiter die alte Oberflaeche - im Browser faellt das nicht auf,
+            # weil ein Reload dort revalidiert.
+            return FileResponse(
+                dist / "index.html",
+                headers={"Cache-Control": "no-store"},
+            )
 
     return app
 
