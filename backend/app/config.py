@@ -62,6 +62,20 @@ class Settings(BaseSettings):
     codex_cli_command: list[str] = ["npx", "--yes", "codex-check", "--json"]
     codex_cli_timeout_seconds: float = 45.0
 
+    # --- Token-Erneuerung über die CLI ------------------------------------
+    # Ein abgelaufener Token wird nie selbst erneuert: weder der refresh_token
+    # gelesen noch die Credentials geschrieben. Das darf nur, wer den Token
+    # ausgestellt hat – die CLI. Läuft er ab, wird sie deshalb mit einem kurzen,
+    # nicht interaktiven Kommando angestoßen, das nichts vom Kontingent
+    # verbraucht. Eine leere Liste schaltet das für den Anbieter ab.
+    claude_cli_refresh_command: list[str] = ["claude", "auth", "status"]
+    # Bewusst leer: Ob sich der Codex-Token über die Konsole erneuern lässt, ist
+    # ungeklärt. Die Mechanik ist anbieterunabhängig – hier ein Kommando
+    # einzutragen genügt.
+    codex_cli_refresh_command: list[str] = []
+    cli_refresh_timeout_seconds: float = 30.0
+    cli_refresh_min_interval_seconds: float = 300.0
+
     # --- Persistenz -------------------------------------------------------
     database_path: Path = BACKEND_ROOT / "data" / "usage.sqlite"
     history_enabled: bool = True

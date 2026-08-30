@@ -105,6 +105,16 @@ das Panel im Dauerbetrieb keinen Dateiwächter braucht.
 erneuern: Keychain-Eintrag `Claude Code-credentials` (macOS) bzw.
 `~/.claude/.credentials.json`, für Codex `~/.codex/auth.json`.
 
+Einen abgelaufenen Token erneuert der Dienst **nie selbst** – er liest keinen
+`refresh_token` und schreibt nichts in die Credentials. Erneuern darf nur, wer
+den Token ausgestellt hat. Also stößt er die CLI mit einem kurzen, nicht
+interaktiven Kommando an (`claude auth status`) und prüft am nächsten Abruf, ob
+das geholfen hat; das Ergebnis steht als `cli.refresh_recovered` bzw.
+`cli.refresh_ineffective` im Log. Höchstens ein Versuch alle fünf Minuten.
+Ändert sich die Credential-Datei, wird sofort neu abgefragt, statt das Intervall
+abzuwarten – wer die CLI ohnehin von Hand startet, sieht den frischen Stand also
+binnen Sekunden.
+
 **Endpunkte** sind `api.anthropic.com/api/oauth/usage` und
 `chatgpt.com/backend-api/codex/usage`. Beide URLs lassen sich über
 `NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` bzw. `…_CODEX_USAGE_URL` nachziehen –
@@ -199,6 +209,9 @@ Alles über Umgebungsvariablen mit dem Präfix `NEXRON_TOKENSCOPE_` oder über
 | `NEXRON_TOKENSCOPE_POLL_INTERVAL_SECONDS` | `60` | Abstand zwischen zwei Abfragen |
 | `NEXRON_TOKENSCOPE_DEMO_MODE` | `0` | Simulierte Werte ohne Credentials |
 | `NEXRON_TOKENSCOPE_MAX_BRIDGE_MINUTES` | `30` | wie frisch ein Codex-Log sein muss, um als aktueller statt letzter Stand zu gelten |
+| `NEXRON_TOKENSCOPE_CLAUDE_CLI_REFRESH_COMMAND` | `["claude","auth","status"]` | Kommando, das bei abgelaufenem Token die CLI anstößt. Leere Liste schaltet es ab. |
+| `NEXRON_TOKENSCOPE_CODEX_CLI_REFRESH_COMMAND` | `[]` | dasselbe für Codex – bewusst leer, siehe unten |
+| `NEXRON_TOKENSCOPE_CLI_REFRESH_MIN_INTERVAL_SECONDS` | `300` | Mindestabstand zwischen zwei Anstößen je Anbieter |
 | `NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` / `…_CODEX_USAGE_URL` | Anbieter-Routen | nachziehbar, wenn sich eine Route ändert |
 | `NEXRON_TOKENSCOPE_CLAUDE_CREDENTIALS_PATH` / `…_CODEX_AUTH_PATH` | `~/.claude/.credentials.json` / `~/.codex/auth.json` | abweichender Ort der Anmeldedaten |
 | `NEXRON_TOKENSCOPE_CLAUDE_PROJECTS_DIR` / `…_CODEX_SESSIONS_DIR` | `~/.claude/projects` / `~/.codex/sessions` | Wurzel der Sitzungslogs |
@@ -220,6 +233,7 @@ Angaben liefert `GET /api/health`.
 | *Token wurde abgelehnt* (`unauthorized`) | Der Endpunkt lehnt den Token ab, und es gibt keine frischen lokalen Werte | CLI einmal starten; frische Codex-`rate_limits` aus einem aktiven Chat werden verwendet, alte Logdaten nicht |
 | *Anbieter drosselt gerade* (`rate_limited`) | Zu viele Anfragen | Der Dienst pausiert automatisch; dauerhaft `…_POLL_INTERVAL_SECONDS` erhöhen |
 | *Keine Anmeldedaten gefunden* (`auth_missing`) | Pfad weicht ab, oder die CLI schreibt die Datei gerade neu | Pfad über `NEXRON_TOKENSCOPE_*_PATH` setzen; bei Token-Refresh löst es sich beim nächsten Poll |
+| *Token abgelaufen* (`auth_expired`) | Der Zugriffstoken ist abgelaufen – typisch nach dem Hochfahren, er gilt nur wenige Stunden | Der Dienst stößt die Claude-CLI selbst an und schreibt ins Log, ob es geholfen hat (`cli.refresh_recovered` / `cli.refresh_ineffective`). Steht dort dauerhaft `ineffective`, die CLI einmal von Hand starten und ein anderes Kommando setzen |
 | *Format hat sich geändert* (`unexpected_shape`) | Der Endpunkt liefert neue Feldnamen | URL prüfen; die JSONL-Auswertung läuft davon unberührt weiter |
 | Verlaufschart bleibt leer | Es gibt noch keine Snapshots | Füllt sich mit jedem Poll |
 | *Kein Backend erreichbar* | Backend läuft nicht oder auf anderem Port | Backend starten; im Dev-Betrieb `VITE_BACKEND_URL` setzen |

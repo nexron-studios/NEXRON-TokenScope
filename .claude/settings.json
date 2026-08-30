@@ -3,7 +3,9 @@
     "allow": [
       "PowerShell(npm install vue vue-router pinia vue-i18n three axios vue-sonner \"@fontsource-variable/space-grotesk\" \"@fontsource-variable/jetbrains-mono\" 2>&1)",
       "PowerShell(npm install -D vite \"@vitejs/plugin-vue\" typescript vue-tsc \"@types/three\" tailwindcss \"@tailwindcss/vite\" vitest \"@vue/test-utils\" jsdom 2>&1)",
-      "PowerShell(npm ls vue vue-router pinia vue-i18n three vite tailwindcss vitest --depth=0 2>&1)"
+      "PowerShell(npm ls vue vue-router pinia vue-i18n three vite tailwindcss vitest --depth=0 2>&1)",
+      "Bash(timeout 30 claude --help)",
+      "Bash(timeout 30 claude auth --help)"
     ]
   }
 }

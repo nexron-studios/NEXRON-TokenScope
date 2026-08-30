@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 import httpx
 
+from .cli_refresh import CliRefresher
 from .config import Settings
 from .models import ProviderUsage, UsageResponse
 from .normalize import now
@@ -19,6 +20,34 @@ _USER_AGENT = "nexron-tokenscope/0.2 (local dashboard)"
 #: Wartezeit, wenn der Anbieter drosselt, aber kein `Retry-After` mitschickt.
 DEFAULT_RATE_LIMIT_COOLDOWN = 300.0
 MAX_COOLDOWN = 1800.0
+
+#: Taktung, in der zwischen zwei Polls auf erneuerte Credentials geschaut wird.
+CREDENTIAL_WATCH_SECONDS = 2.0
+
+
+def _describe_trouble(results: list[ProviderUsage]) -> str | None:
+    """Fasst zusammen, was schiefging – für ``/api/health``.
+
+    Auch überbrückte Anbieter melden hier ihren Grund: Die Kachel zeigt zwar
+    Werte, der frische Abruf ist aber trotzdem gescheitert.
+    """
+    troubled = [
+        (item, item.message if item.status != "ok" else item.warning)
+        for item in results
+        if item.status != "ok" or item.stale
+    ]
+    if not troubled:
+        return None
+    return "; ".join(f"{item.name}: {reason}" for item, reason in troubled)
+
+
+def _is_auth_expired(item: ProviderUsage) -> bool:
+    """Ob dieser Anbieter an einem abgelaufenen Token hängt.
+
+    Nach dem Überbrücken trägt die Kachel den letzten guten Wert und den Grund
+    nur noch in ``warning_status`` – beide Stellen müssen also gelesen werden.
+    """
+    return "auth_expired" in (item.status, item.warning_status)
 
 
 def build_providers(settings: Settings) -> list[Provider]:
@@ -56,6 +85,9 @@ class UsagePoller:
             demo_mode=settings.demo_mode,
             providers=[],
         )
+        self._refresher = CliRefresher(settings)
+        #: Laufende CLI-Anstöße – ohne Referenz sammelt der GC sie wieder ein.
+        self._renewals: set[asyncio.Task[None]] = set()
         self._last_success_at: datetime | None = None
         self._last_error: str | None = None
         self._last_prune_at: datetime | None = None
@@ -84,6 +116,9 @@ class UsagePoller:
             except asyncio.CancelledError:
                 pass
             self._task = None
+        for renewal in list(self._renewals):
+            renewal.cancel()
+        self._renewals.clear()
         if self._client is not None:
             await self._client.aclose()
             self._client = None
@@ -115,11 +150,40 @@ class UsagePoller:
                 ", ".join(entry.name for entry in restored),
             )
 
+    def _credential_stamp(self) -> float | None:
+        """Änderungszeit der Claude-Credentials, sofern es sie als Datei gibt.
+
+        Auf macOS liegt der Token im Keychain – dort gibt es nichts zu
+        beobachten und es bleibt beim Intervall.
+        """
+        try:
+            return self._settings.claude_credentials_path.stat().st_mtime
+        except OSError:
+            return None
+
+    async def _sleep_until_due(self, interval: int) -> None:
+        """Wartet das Intervall ab – oder bis die CLI den Token erneuert hat.
+
+        Ohne das läge ein frisch geschriebener Token bis zu eine Minute
+        ungenutzt herum, während die Kachel weiter „abgelaufen" zeigt.
+        """
+        stamp = self._credential_stamp()
+        waited = 0.0
+        while waited < interval:
+            step = min(CREDENTIAL_WATCH_SECONDS, interval - waited)
+            await asyncio.sleep(step)
+            waited += step
+
+            current = self._credential_stamp()
+            if current is not None and current != stamp:
+                logger.info("credentials.changed: hole sofort neu")
+                return
+
     async def _loop(self) -> None:
         interval = max(10, self._settings.poll_interval_seconds)
         while True:
             try:
-                await asyncio.sleep(interval)
+                await self._sleep_until_due(interval)
                 await self.refresh(force=True)
             except asyncio.CancelledError:
                 raise
@@ -153,22 +217,14 @@ class UsagePoller:
                 providers=list(results),
             )
             self._last_success_at = moment
-
-            # Auch überbrückte Anbieter melden hier ihren Grund – die Kachel
-            # zeigt zwar Werte, der Abruf ist aber trotzdem gescheitert.
-            troubled = [
-                (item, item.message if item.status != "ok" else item.warning)
-                for item in results
-                if item.status != "ok" or item.stale
-            ]
-            self._last_error = (
-                "; ".join(f"{item.name}: {reason}" for item, reason in troubled)
-                if troubled
-                else None
-            )
+            self._last_error = _describe_trouble(results)
 
             self._persist(moment, results)
-            return self._snapshot
+
+        # Erst außerhalb des Locks: Der Anstoß fragt den Anbieter danach selbst
+        # noch einmal ab und braucht das Lock dafür.
+        self._schedule_renewals(results)
+        return self._snapshot
 
     async def _fetch_one(self, provider: Provider) -> ProviderUsage:
         cooldown = self._cooldown_until.get(provider.id)
@@ -247,6 +303,70 @@ class UsagePoller:
                 "retry_after_seconds": failure.retry_after_seconds,
             }
         )
+
+    # --- Token-Erneuerung -------------------------------------------------
+
+    def _schedule_renewals(self, results: list[ProviderUsage]) -> None:
+        """Lässt für jeden abgelaufenen Token die zugehörige CLI anstoßen.
+
+        Im Hintergrund, damit ein ``?refresh=true`` aus der Oberfläche nicht auf
+        ein fremdes Kommando wartet.
+        """
+        for item in results:
+            if not _is_auth_expired(item):
+                continue
+            if not self._refresher.may_attempt(item.id):
+                continue
+
+            task = asyncio.create_task(
+                self._renew(item.id), name=f"cli-refresh-{item.id}"
+            )
+            self._renewals.add(task)
+            task.add_done_callback(self._renewals.discard)
+
+    async def _renew(self, provider_id: str) -> None:
+        provider = next((p for p in self._providers if p.id == provider_id), None)
+        if provider is None:
+            return
+
+        try:
+            if not await self._refresher.trigger(provider_id):
+                return
+
+            # Ob das Kommando den Token wirklich erneuert hat, entscheidet der
+            # nächste Abruf – nicht sein Rückgabewert.
+            async with self._lock:
+                result = await self._fetch_one(provider)
+                self._apply_renewal(result)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # pragma: no cover - darf den Poller nie beschädigen
+            logger.exception("CLI-Anstoß für %s fehlgeschlagen", provider_id)
+            return
+
+        if result.status == "ok" and not result.stale:
+            logger.info("cli.refresh_recovered: %s liefert wieder Werte", provider_id)
+            return
+
+        logger.warning(
+            "cli.refresh_ineffective: %s bleibt auf %s – erneuert das Kommando "
+            "den Token überhaupt?",
+            provider_id,
+            result.warning_status or result.status,
+        )
+
+    def _apply_renewal(self, result: ProviderUsage) -> None:
+        """Tauscht eine einzelne Kachel im aktuellen Snapshot aus."""
+        moment = now()
+        providers = [
+            result if item.id == result.id else item
+            for item in self._snapshot.providers
+        ]
+        self._snapshot = self._snapshot.model_copy(
+            update={"generated_at": moment, "providers": providers}
+        )
+        self._last_error = _describe_trouble(providers)
+        self._persist(moment, [result])
 
     def _persist(self, moment: datetime, results: list[ProviderUsage]) -> None:
         store = self._store

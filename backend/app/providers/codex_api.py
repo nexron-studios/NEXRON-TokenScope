@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 
+from ..cli_refresh import run_quiet
 from ..config import Settings
 from ..credentials import CredentialError, load_codex_credential
 from ..logs.codex_jsonl import latest_codex_rate_limits
@@ -170,20 +171,16 @@ class CodexProvider:
         if not settings.codex_cli_fallback:
             return None
 
-        try:
-            process = await asyncio.create_subprocess_exec(
-                *settings.codex_cli_command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            stdout, _ = await asyncio.wait_for(
-                process.communicate(), timeout=settings.codex_cli_timeout_seconds
-            )
-        except (OSError, asyncio.TimeoutError, ValueError) as exc:
-            logger.warning("codex-check-Fallback fehlgeschlagen: %s", exc)
+        # `npx` ist auf Windows ein .cmd-Shim und liesse sich sonst gar nicht
+        # starten – run_quiet loest das auf und schluckt jeden Fehler.
+        outcome = await run_quiet(
+            settings.codex_cli_command, timeout=settings.codex_cli_timeout_seconds
+        )
+        if outcome is None:
             return None
 
-        if process.returncode != 0 or not stdout:
+        code, stdout = outcome
+        if code != 0 or not stdout:
             return None
 
         try:
