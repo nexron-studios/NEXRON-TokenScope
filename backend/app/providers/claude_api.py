@@ -101,7 +101,10 @@ class ClaudeProvider:
             return build_error(self.id, self.name, "unreachable", message, plan=plan)
 
         if response.status_code != 200:
-            status, message = status_from_http(response.status_code)
+            status, message = status_from_http(
+                response.status_code,
+                content_type=response.headers.get("content-type"),
+            )
             return build_error(
                 self.id,
                 self.name,

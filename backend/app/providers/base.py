@@ -42,8 +42,19 @@ def build_error(
     )
 
 
-def status_from_http(status_code: int) -> tuple[ProviderStatus, str]:
+def status_from_http(
+    status_code: int, *, content_type: str | None = None
+) -> tuple[ProviderStatus, str]:
     if status_code in (401, 403):
+        # Eine HTML-Seite kommt nicht von der API, sondern von etwas davor:
+        # Cloudflare, eine Login-Wand, ein Captcha. Der Token ist dann nicht
+        # das Problem, und "bitte neu anmelden" schickt auf die falsche Fährte.
+        if content_type is not None and "html" in content_type.lower():
+            return (
+                "unreachable",
+                f"Endpunkt blockiert (HTTP {status_code}) – "
+                "die Antwort war eine HTML-Seite, kein JSON.",
+            )
         return (
             "unauthorized",
             "Token abgelehnt – bitte neu anmelden.",

@@ -68,10 +68,20 @@ class Settings(BaseSettings):
     # ausgestellt hat – die CLI. Läuft er ab, wird sie deshalb mit einem kurzen,
     # nicht interaktiven Kommando angestoßen, das nichts vom Kontingent
     # verbraucht. Eine leere Liste schaltet das für den Anbieter ab.
-    claude_cli_refresh_command: list[str] = ["claude", "auth", "status"]
-    # Bewusst leer: Ob sich der Codex-Token über die Konsole erneuern lässt, ist
-    # ungeklärt. Die Mechanik ist anbieterunabhängig – hier ein Kommando
-    # einzutragen genügt.
+    #
+    # Es muss ein Kommando sein, das den Token wirklich anfasst. `claude auth
+    # status` tut das nicht: Es liest die Datei, meldet auch bei abgelaufenem
+    # Token `loggedIn: true` und lässt sie unverändert – der Anstoß lief also
+    # ins Leere und meldete dabei Erfolg. `claude doctor` erneuert
+    # (gemessen an einer Kopie mit zurückgesetztem `expiresAt`: Datei neu
+    # geschrieben, neues Ablaufdatum, rund drei Sekunden).
+    claude_cli_refresh_command: list[str] = ["claude", "doctor"]
+    # Bewusst leer, und das bleibt vorerst so: `codex login status` und
+    # `codex doctor` lassen die `auth.json` nachweislich unberührt, und ein
+    # `codex` im PATH gibt es hier gar nicht – die Binärdatei steckt in der
+    # VS-Code-Erweiterung, unter einem Pfad, der jedes Update wechselt. Die
+    # Mechanik ist anbieterunabhängig: Findet sich ein Kommando, das erneuert,
+    # genügt es, es hier einzutragen.
     codex_cli_refresh_command: list[str] = []
     cli_refresh_timeout_seconds: float = 30.0
     cli_refresh_min_interval_seconds: float = 300.0
