@@ -55,6 +55,17 @@ export function useUsage() {
     }
   }
 
+  /**
+   * Uebernimmt einen Stand, der nicht aus einem eigenen Abruf stammt.
+   * Dass er ankommt, ist zugleich der Beweis, dass das Backend erreichbar ist -
+   * ein stehengebliebenes Fehlerbanner geht damit weg.
+   */
+  const apply = (next: UsageResponse) => {
+    usage.value = next
+    backendError.value = undefined
+    backendHint.value = undefined
+  }
+
   onBeforeUnmount(() => controller?.abort())
 
   return {
@@ -66,5 +77,6 @@ export function useUsage() {
     backendError,
     backendHint,
     load,
+    apply,
   }
 }

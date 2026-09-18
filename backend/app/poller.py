@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from datetime import datetime, timedelta
 
 import httpx
@@ -23,6 +25,14 @@ MAX_COOLDOWN = 1800.0
 
 #: Taktung, in der zwischen zwei Polls auf erneuerte Credentials geschaut wird.
 CREDENTIAL_WATCH_SECONDS = 2.0
+
+#: Ein Abonnent will den letzten Stand, nicht jeden verpassten Zwischenschritt –
+#: deshalb fasst seine Schlange genau einen Eintrag.
+STREAM_QUEUE_SIZE = 1
+
+#: Was ein Datenstrom bekommt: den neuen Stand, oder ``None`` als Schlusszeichen
+#: beim Herunterfahren.
+StreamQueue = asyncio.Queue["UsageResponse | None"]
 
 
 def _describe_trouble(results: list[ProviderUsage]) -> str | None:
@@ -95,6 +105,8 @@ class UsagePoller:
         self._last_good: dict[str, ProviderUsage] = {}
         #: Bis dahin wird ein gedrosselter Anbieter gar nicht erst gefragt.
         self._cooldown_until: dict[str, datetime] = {}
+        #: Offene Datenströme, die auf den nächsten Stand warten.
+        self._subscribers: set[StreamQueue] = set()
 
     # --- Lebenszyklus -----------------------------------------------------
 
@@ -109,6 +121,11 @@ class UsagePoller:
         self._task = asyncio.create_task(self._loop(), name="usage-poller")
 
     async def stop(self) -> None:
+        # Erst die Ströme verabschieden: Ohne Schlusszeichen wartet uvicorn beim
+        # Herunterfahren auf eine Verbindung, die von sich aus nie endet.
+        for queue in list(self._subscribers):
+            self._offer(queue, None)
+
         if self._task is not None:
             self._task.cancel()
             try:
@@ -190,6 +207,39 @@ class UsagePoller:
             except Exception:  # pragma: no cover - Loop darf nie sterben
                 logger.exception("Poll-Durchlauf fehlgeschlagen")
 
+    # --- Datenstrom -------------------------------------------------------
+
+    @contextmanager
+    def subscribe(self) -> Iterator[StreamQueue]:
+        """Meldet einen Datenstrom an, der auf jede Änderung wartet.
+
+        Ohne das kennt die Oberfläche nur ihr eigenes Intervall: Zwischen einem
+        erneuerten Token und der sichtbaren Kachel lag bis zu eine Minute, in
+        der nur der Aktualisieren-Knopf half.
+        """
+        queue: StreamQueue = asyncio.Queue(maxsize=STREAM_QUEUE_SIZE)
+        self._subscribers.add(queue)
+        try:
+            yield queue
+        finally:
+            self._subscribers.discard(queue)
+
+    def _offer(self, queue: StreamQueue, value: UsageResponse | None) -> None:
+        """Legt den neuen Stand hin und wirft den überholten weg.
+
+        Die Schlange fasst genau einen Eintrag – ein Abonnent, der noch nicht
+        abgeholt hat, soll den aktuellen Stand bekommen, keine Warteschlange
+        veralteter Zwischenstände.
+        """
+        # Leer heißt hier: der Abonnent war schneller. Das ist der Normalfall.
+        with suppress(asyncio.QueueEmpty):
+            queue.get_nowait()
+        queue.put_nowait(value)
+
+    def _publish(self) -> None:
+        for queue in self._subscribers:
+            self._offer(queue, self._snapshot)
+
     # --- Abfrage ----------------------------------------------------------
 
     async def refresh(self, *, force: bool = False) -> UsageResponse:
@@ -220,6 +270,7 @@ class UsagePoller:
             self._last_error = _describe_trouble(results)
 
             self._persist(moment, results)
+            self._publish()
 
         # Erst außerhalb des Locks: Der Anstoß fragt den Anbieter danach selbst
         # noch einmal ab und braucht das Lock dafür.
@@ -367,6 +418,7 @@ class UsagePoller:
         )
         self._last_error = _describe_trouble(providers)
         self._persist(moment, [result])
+        self._publish()
 
     def _persist(self, moment: datetime, results: list[ProviderUsage]) -> None:
         store = self._store

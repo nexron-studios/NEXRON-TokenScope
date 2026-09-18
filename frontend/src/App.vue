@@ -9,14 +9,24 @@ import { useSettings } from '@/composables/useSettings'
 import { useDesktopWindow } from '@/composables/useDesktopWindow'
 import { useUsage } from '@/composables/useUsage'
 import { useUsageRefresh } from '@/composables/useUsageRefresh'
+import { useUsageStream } from '@/composables/useUsageStream'
 import DashboardView from '@/views/DashboardView.vue'
 import LogsView from '@/views/LogsView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 
 const { settings } = useSettings()
 const { t } = useI18n()
-const { usage, health, providers, isDemo, loading, backendError, backendHint, load } =
-  useUsage()
+const {
+  usage,
+  health,
+  providers,
+  isDemo,
+  loading,
+  backendError,
+  backendHint,
+  load,
+  apply,
+} = useUsage()
 const { history, loading: historyLoading, load: loadHistory } = useHistory()
 
 useDesktopWindow()
@@ -66,6 +76,10 @@ const refreshNow = async () => {
     loadHistory(settings.value.historyHours),
   ])
 }
+
+// Das Backend weiss selbst, wann sich etwas geaendert hat - vorher erfuhr die
+// Oberflaeche davon erst beim naechsten Intervall.
+useUsageStream(apply)
 
 const { isAutoRefreshActive } = useUsageRefresh({
   autoRefresh: computed(() => settings.value.autoRefresh),

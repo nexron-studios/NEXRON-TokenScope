@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+from collections.abc import AsyncIterator
 from datetime import timedelta
 from typing import Annotated, Literal
 
 import anyio.to_thread
 from fastapi import APIRouter, Query, Request
+from fastapi.responses import StreamingResponse
 
 from . import __version__
 from .config import Settings
@@ -20,6 +23,11 @@ from .poller import UsagePoller
 from .storage import SnapshotStore
 
 router = APIRouter(prefix="/api")
+
+#: Abstand zwischen zwei Lebenszeichen im Datenstrom. Ohne sie merkt keine der
+#: beiden Seiten, dass die andere weg ist – die Verbindung bliebe als Leiche
+#: offen.
+STREAM_HEARTBEAT_SECONDS = 20.0
 
 
 def _settings(request: Request) -> Settings:
@@ -42,6 +50,47 @@ async def read_usage(
         # haengen bleiben (anbieter-seitige Cooldowns gelten weiterhin).
         return await poller.refresh(force=True)
     return poller.snapshot
+
+
+def _as_event(snapshot: UsageResponse) -> str:
+    return f"data: {snapshot.model_dump_json()}\n\n"
+
+
+@router.get("/events", summary="Kontingente als Datenstrom")
+async def stream_usage(request: Request) -> StreamingResponse:
+    """Schickt jeden neuen Stand, sobald er da ist.
+
+    Vorher kannte die Oberfläche nur ihr eigenes Intervall: Nach einem
+    erneuerten Token blieb die Kachel bis zu eine Minute auf dem alten Wert
+    stehen, und nur der Aktualisieren-Knopf half. Kein ``response_model`` –
+    der Rumpf ist ein Ereignisstrom, kein einzelnes Objekt.
+    """
+    poller = _poller(request)
+
+    async def events() -> AsyncIterator[str]:
+        with poller.subscribe() as stream:
+            # Der erste Push ist der aktuelle Stand. Damit ist auch jede
+            # Neuverbindung sofort wieder auf dem Laufenden.
+            yield _as_event(poller.snapshot)
+
+            while True:
+                try:
+                    snapshot = await asyncio.wait_for(
+                        stream.get(), STREAM_HEARTBEAT_SECONDS
+                    )
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+                    continue
+
+                if snapshot is None:
+                    return
+                yield _as_event(snapshot)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/history", response_model=HistoryResponse, summary="Verlauf aus SQLite")
