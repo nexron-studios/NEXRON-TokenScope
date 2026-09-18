@@ -108,7 +108,7 @@ erneuern: Keychain-Eintrag `Claude Code-credentials` (macOS) bzw.
 Einen abgelaufenen Token erneuert der Dienst **nie selbst** – er liest keinen
 `refresh_token` und schreibt nichts in die Credentials. Erneuern darf nur, wer
 den Token ausgestellt hat. Also stößt er die CLI mit einem kurzen, nicht
-interaktiven Kommando an (`claude auth status`) und prüft am nächsten Abruf, ob
+interaktiven Kommando an (`claude doctor`) und prüft am nächsten Abruf, ob
 das geholfen hat; das Ergebnis steht als `cli.refresh_recovered` bzw.
 `cli.refresh_ineffective` im Log. Höchstens ein Versuch alle fünf Minuten.
 Ändert sich die Credential-Datei, wird sofort neu abgefragt, statt das Intervall
@@ -116,9 +116,11 @@ abzuwarten – wer die CLI ohnehin von Hand startet, sieht den frischen Stand al
 binnen Sekunden.
 
 **Endpunkte** sind `api.anthropic.com/api/oauth/usage` und
-`chatgpt.com/backend-api/codex/usage`. Beide URLs lassen sich über
-`NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` bzw. `…_CODEX_USAGE_URL` nachziehen –
-ändert ein Anbieter seine Route, reicht eine Zeile in der `.env`.
+`chatgpt.com/backend-api/wham/usage` – derselbe, den die Codex-CLI für `/usage`
+fragt. Der ältere `…/backend-api/codex/usage` ist seit September 2026 von
+Cloudflare dicht (403 mit HTML-Seite, auch mit gültigem Token). Beide URLs
+lassen sich über `NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` bzw. `…_CODEX_USAGE_URL`
+nachziehen – ändert ein Anbieter seine Route, reicht eine Zeile in der `.env`.
 
 Die **JSONL-Auswertung** streamt zeilenweise, cacht je Datei über
 `mtime`/`size` und dedupliziert: Claude über `message.id` + `requestId`, Codex

@@ -52,7 +52,11 @@ class Settings(BaseSettings):
     # --- Codex ------------------------------------------------------------
     codex_enabled: bool = True
     codex_auth_path: Path = Path.home() / ".codex" / "auth.json"
-    codex_usage_url: str = "https://chatgpt.com/backend-api/codex/usage"
+    # `/backend-api/codex/usage` ist seit September 2026 von Cloudflare dicht
+    # (403 mit HTML-Seite, auch mit gültigem Token). Die Codex-CLI selbst fragt
+    # `/wham/usage` – der antwortet mit einem bloßen Bearer-Token, ohne
+    # `chatgpt-account-id` oder `originator`.
+    codex_usage_url: str = "https://chatgpt.com/backend-api/wham/usage"
     codex_sessions_dir: Path = Path.home() / ".codex" / "sessions"
     # Fällt auf die zuletzt in den Rollout-Logs gemeldeten rate_limits zurück,
     # wenn der undokumentierte Endpunkt nicht antwortet.

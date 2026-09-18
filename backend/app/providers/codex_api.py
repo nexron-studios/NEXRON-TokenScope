@@ -13,7 +13,7 @@ from ..config import Settings
 from ..credentials import CredentialError, load_codex_credential
 from ..logs.codex_jsonl import latest_codex_rate_limits
 from ..models import ProviderUsage, SourceKind, UsageWindow
-from ..normalize import extract_window, now, parse_timestamp, redact
+from ..normalize import extract_window, now, parse_timestamp, redact, to_int
 from .base import build_error, parse_retry_after, status_from_http, unwrap_payload
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,42 @@ _PLAN_LABELS = {
     "enterprise": "Enterprise",
     "free": "Free",
 }
+
+#: Fensternamen von ``/wham/usage`` → Fensternamen der Rollout-Logs.
+_WHAM_WINDOWS = (("primary", "primary_window"), ("secondary", "secondary_window"))
+
+SECONDS_PER_MINUTE = 60
+
+
+def block_from_wham(payload: Any) -> dict[str, Any] | None:
+    """Übersetzt eine ``/wham/usage``-Antwort in das Schema der Rollout-Logs.
+
+    Der Endpunkt nennt die Fenster ``primary_window`` / ``secondary_window``
+    und misst ihre Länge in Sekunden; die Logs – und damit der Rest des
+    Parsers – kennen ``primary`` / ``secondary`` mit ``window_minutes``.
+    Einmal übersetzen ist billiger als zwei Parser zu pflegen.
+
+    ``None`` heißt: das ist keine wham-Antwort, der Aufrufer versucht die
+    übrigen Formen.
+    """
+    if not isinstance(payload, dict):
+        return None
+    rate_limit = payload.get("rate_limit")
+    if not isinstance(rate_limit, dict):
+        return None
+
+    block: dict[str, Any] = {"plan_type": payload.get("plan_type")}
+    for key, source_key in _WHAM_WINDOWS:
+        window = rate_limit.get(source_key)
+        if not isinstance(window, dict):
+            continue
+        seconds = to_int(window.get("limit_window_seconds"))
+        block[key] = {
+            **window,
+            "window_minutes": seconds // SECONDS_PER_MINUTE if seconds else None,
+        }
+    return block
+
 
 def _windows_from_rate_limits(block: dict[str, Any]) -> list[UsageWindow]:
     """``{primary: {...}, secondary: {...}}`` → normalisierte Fenster."""
@@ -196,7 +232,9 @@ class CodexProvider:
     # --- Gemeinsame Normalisierung ---------------------------------------
 
     def _from_payload(self, payload: Any, *, source: SourceKind) -> ProviderUsage | None:
-        block = unwrap_payload(payload, ("rate_limits", "usage", "limits", "data"))
+        block = block_from_wham(payload) or unwrap_payload(
+            payload, ("rate_limits", "usage", "limits", "data")
+        )
         if block is None:
             return None
 
