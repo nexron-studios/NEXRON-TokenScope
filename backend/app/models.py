@@ -153,6 +153,28 @@ class LogSummary(BaseModel):
     insights: LogInsights = Field(default_factory=LogInsights)
 
 
+class WeatherReport(BaseModel):
+    """Wetter am Standort des Geräts, für die Kopfzeile.
+
+    Die Oberfläche übersetzt ``weather_code`` selbst in Text und Symbol –
+    hier steht bewusst kein deutscher Klartext, sonst wäre die englische
+    Fassung darauf angewiesen, dass das Backend die Sprache kennt.
+    """
+
+    #: Stadtname aus der Ortung. Leer, wenn nur Koordinaten bekannt sind.
+    place: str
+    temperature: float
+    #: Gefühlte Temperatur – bei Wind und Frost der ehrlichere Wert.
+    feels_like: float | None = None
+    #: Tageshöchst- und Tiefstwert, also „tagsüber" und „nachts".
+    day_high: float | None = None
+    day_low: float | None = None
+    #: WMO-Wettercode (0 = klar, 95 = Gewitter, …).
+    weather_code: int = 0
+    is_day: bool = True
+    observed_at: datetime
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     version: str

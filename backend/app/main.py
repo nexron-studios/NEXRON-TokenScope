@@ -14,6 +14,7 @@ from .config import Settings, get_settings
 from .logs import LogStore
 from .poller import UsagePoller
 from .storage import SnapshotStore
+from .weather import WeatherService
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI):
     app.state.store = store
 
     app.state.logs = LogStore(settings)
+    app.state.weather = WeatherService(settings)
 
     poller = UsagePoller(settings, store)
     app.state.poller = poller

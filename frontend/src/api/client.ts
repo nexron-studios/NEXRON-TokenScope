@@ -4,6 +4,7 @@ import type {
   LogGroupBy,
   LogSummary,
   UsageResponse,
+  WeatherReport,
 } from '@/api/types'
 import { useI18n } from '@/composables/useI18n'
 
@@ -93,4 +94,8 @@ export const api = {
     ),
 
   health: (signal?: AbortSignal) => request<HealthResponse>('/api/health', signal),
+
+  /** `null` heißt: abgeschaltet oder gerade nicht erreichbar. */
+  weather: (signal?: AbortSignal) =>
+    request<WeatherReport | null>('/api/weather', signal),
 }

@@ -22,6 +22,8 @@ export interface AppSettings {
   logDays: number
   /** Nachtmodus dimmt das Panel, ohne die Hintergrundbeleuchtung zu ändern. */
   nightMode: boolean
+  /** Wetter in der Kopfzeile. Aus heißt auch: keine Ortung, kein Abruf. */
+  showWeather: boolean
   /** Fenstergröße der Desktop-Hülle – ohne Wirkung im Browser. */
   windowSize: WindowSize
 }
@@ -34,6 +36,7 @@ const DEFAULTS: AppSettings = {
   historyHours: 24,
   logDays: 7,
   nightMode: false,
+  showWeather: true,
   windowSize: 'medium',
 }
 

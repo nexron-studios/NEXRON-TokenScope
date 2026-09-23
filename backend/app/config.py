@@ -90,6 +90,22 @@ class Settings(BaseSettings):
     cli_refresh_timeout_seconds: float = 30.0
     cli_refresh_min_interval_seconds: float = 300.0
 
+    # --- Wetter -----------------------------------------------------------
+    # Die einzige Abfrage, die nichts mit dem Kontingent zu tun hat, und damit
+    # die einzige, die das Gerät über die Anbieter hinaus ins Netz führt.
+    # `false` stellt beides ab: Ortung und Wetterdienst.
+    weather_enabled: bool = True
+    # Ortung über die öffentliche IP – stadtgenau, ohne Schlüssel und ohne die
+    # Rückfrage, die die Browser-Ortung auslösen würde.
+    weather_location_url: str = "https://ipapi.co/json/"
+    weather_forecast_url: str = "https://api.open-meteo.com/v1/forecast"
+    # Fester Ort statt Ortung. Beide Koordinaten gesetzt heißt: gar nicht erst
+    # orten – für den Fall, dass die IP in der falschen Stadt liegt.
+    weather_latitude: float | None = None
+    weather_longitude: float | None = None
+    weather_place: str = ""
+    weather_ttl_seconds: int = 900
+
     # --- Persistenz -------------------------------------------------------
     database_path: Path = BACKEND_ROOT / "data" / "usage.sqlite"
     history_enabled: bool = True

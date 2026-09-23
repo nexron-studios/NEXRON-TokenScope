@@ -126,3 +126,19 @@ export interface HealthResponse {
   last_poll_error: string | null
   sources: Record<string, boolean>
 }
+
+export interface WeatherReport {
+  /** Stadtname aus der Ortung; leer, wenn nur Koordinaten bekannt sind. */
+  place: string
+  temperature: number
+  /** Gefühlte Temperatur – bei Wind und Frost der ehrlichere Wert. */
+  feels_like: number | null
+  /** Tageshöchstwert (tagsüber). */
+  day_high: number | null
+  /** Tagestiefstwert (nachts). */
+  day_low: number | null
+  /** WMO-Wettercode, siehe `weatherLook()`. */
+  weather_code: number
+  is_day: boolean
+  observed_at: string
+}

@@ -171,6 +171,11 @@ const lastPoll = computed(() => {
             :label="t('settings.night')"
             :hint="t('settings.nightHint')"
           />
+          <TouchToggle
+            v-model="settings.showWeather"
+            :label="t('settings.weather')"
+            :hint="t('settings.weatherHint')"
+          />
           <TouchSegmented
             v-model="settings.language"
             :label="t('settings.language')"

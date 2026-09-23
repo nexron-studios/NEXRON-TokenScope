@@ -17,10 +17,12 @@ from .models import (
     HistoryResponse,
     LogSummary,
     UsageResponse,
+    WeatherReport,
 )
 from .normalize import now
 from .poller import UsagePoller
 from .storage import SnapshotStore
+from .weather import WeatherService
 
 router = APIRouter(prefix="/api")
 
@@ -116,6 +118,22 @@ async def read_log_summary(
     return await anyio.to_thread.run_sync(
         lambda: store.summary(days=days, group_by=group_by)
     )
+
+
+@router.get(
+    "/weather",
+    response_model=WeatherReport | None,
+    summary="Wetter am Standort",
+)
+async def read_weather(request: Request) -> WeatherReport | None:
+    """Liefert den zwischengespeicherten Wetterbericht, oder ``null``.
+
+    ``null`` heißt: abgeschaltet oder gerade nicht erreichbar. Die Kopfzeile
+    blendet die Anzeige dann aus – ein Wetterdienst, der klemmt, ist kein
+    Fehler des Dashboards und bekommt deshalb auch keine Fehlermeldung.
+    """
+    service: WeatherService = request.app.state.weather
+    return await service.report()
 
 
 @router.get("/health", response_model=HealthResponse, summary="Dienststatus")

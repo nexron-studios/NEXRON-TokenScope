@@ -151,6 +151,7 @@ genau eine Kachel, nie das ganze Dashboard. Der `status` sagt, warum
 | `GET /api/usage` | aktueller Cache; `?refresh=true` erzwingt einen Poll |
 | `GET /api/history?hours=24[&provider=]` | Snapshot-Verlauf aus SQLite |
 | `GET /api/logs/summary?days=7&group_by=day\|project\|model\|provider` | Auswertung der JSONL-Logs samt Kennzahlen (`insights`) |
+| `GET /api/weather` | Wetter am Standort, oder `null` wenn abgeschaltet |
 | `GET /api/health` | Diagnose: gefundene Quellen, letzter Poll, Bindung |
 
 Schema und Beispielantworten stehen interaktiv unter
@@ -211,7 +212,7 @@ Alles über Umgebungsvariablen mit dem Präfix `NEXRON_TOKENSCOPE_` oder über
 | `NEXRON_TOKENSCOPE_POLL_INTERVAL_SECONDS` | `60` | Abstand zwischen zwei Abfragen |
 | `NEXRON_TOKENSCOPE_DEMO_MODE` | `0` | Simulierte Werte ohne Credentials |
 | `NEXRON_TOKENSCOPE_MAX_BRIDGE_MINUTES` | `30` | wie frisch ein Codex-Log sein muss, um als aktueller statt letzter Stand zu gelten |
-| `NEXRON_TOKENSCOPE_CLAUDE_CLI_REFRESH_COMMAND` | `["claude","auth","status"]` | Kommando, das bei abgelaufenem Token die CLI anstößt. Leere Liste schaltet es ab. |
+| `NEXRON_TOKENSCOPE_CLAUDE_CLI_REFRESH_COMMAND` | `["claude","doctor"]` | Kommando, das bei abgelaufenem Token die CLI anstößt. Leere Liste schaltet es ab. |
 | `NEXRON_TOKENSCOPE_CODEX_CLI_REFRESH_COMMAND` | `[]` | dasselbe für Codex – bewusst leer, siehe unten |
 | `NEXRON_TOKENSCOPE_CLI_REFRESH_MIN_INTERVAL_SECONDS` | `300` | Mindestabstand zwischen zwei Anstößen je Anbieter |
 | `NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` / `…_CODEX_USAGE_URL` | Anbieter-Routen | nachziehbar, wenn sich eine Route ändert |
@@ -221,6 +222,9 @@ Alles über Umgebungsvariablen mit dem Präfix `NEXRON_TOKENSCOPE_` oder über
 | `NEXRON_TOKENSCOPE_CODEX_CLI_FALLBACK` | `0` | zusätzlich `npx codex-check --json` versuchen |
 | `NEXRON_TOKENSCOPE_HISTORY_ENABLED` / `…_HISTORY_RETENTION_DAYS` | `1` / `90` | Snapshots nach SQLite schreiben, ältere täglich entfernen |
 | `NEXRON_TOKENSCOPE_CLAUDE_ENABLED` / `…_CODEX_ENABLED` | `1` | Anbieter serverseitig abschalten |
+| `NEXRON_TOKENSCOPE_WEATHER_ENABLED` | `1` | Wetter in der Kopfzeile. `0` unterbindet auch die Ortung. |
+| `NEXRON_TOKENSCOPE_WEATHER_LATITUDE` / `…_LONGITUDE` / `…_PLACE` | leer | fester Ort statt IP-Ortung |
+| `NEXRON_TOKENSCOPE_WEATHER_TTL_SECONDS` | `900` | wie lange ein Wetterbericht gilt (mindestens 600) |
 
 ## Wenn etwas nicht geht
 
@@ -314,6 +318,13 @@ Ablegen unter `~/.config/systemd/user/nexron-tokenscope.service`, dann
   enthalten nur Prozentwerte und Zeitstempel.
 - Das Frontend speichert ausschließlich Anzeigeoptionen unter
   `nexron-tokenscope:settings` im Local Storage.
+- **Das Wetter ist die einzige Abfrage, die über die Anbieter hinausgeht.**
+  Sie ortet über die öffentliche IP (`ipapi.co`) und holt die Werte von
+  Open-Meteo – beides ohne Schlüssel, beides ohne Bezug zum Konto. Wer das
+  nicht will, schaltet es in den Einstellungen ab oder setzt
+  `NEXRON_TOKENSCOPE_WEATHER_ENABLED=false`; dann unterbleibt auch die Ortung.
+  Ein fester Ort ohne jede Ortung geht über
+  `…_WEATHER_LATITUDE` / `…_WEATHER_LONGITUDE` / `…_WEATHER_PLACE`.
 
 ## Struktur
 

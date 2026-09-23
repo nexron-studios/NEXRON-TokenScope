@@ -2,6 +2,8 @@
 import { computed } from "vue";
 import { useNow } from "@vueuse/core";
 import { useI18n } from "@/composables/useI18n";
+import { useWeather } from "@/composables/useWeather";
+import WeatherBadge from "@/components/WeatherBadge.vue";
 import nexronLogo from "@/assets/logos/nexron_logo.svg";
 import {
   ChartColumn,
@@ -24,6 +26,7 @@ defineEmits<{ navigate: [ViewId]; refresh: [] }>();
 
 const now = useNow();
 const { locale, t } = useI18n();
+const { weather } = useWeather();
 const clock = computed(() =>
   new Intl.DateTimeFormat(locale.value, {
     hour: "2-digit",
@@ -55,6 +58,11 @@ const tabs = computed<Array<{ id: ViewId; label: string; icon: LucideIcon }>>(
         {{ connected ? t("nav.local") : t("nav.offline") }}
       </span>
       <span v-if="demo" class="demo">Demo</span>
+
+      <template v-if="weather">
+        <span class="divider" />
+        <WeatherBadge :report="weather" />
+      </template>
     </div>
 
     <nav class="tabs">
