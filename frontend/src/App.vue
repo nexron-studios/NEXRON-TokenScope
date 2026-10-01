@@ -2,9 +2,11 @@
 import { computed, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import AppHeader from '@/components/AppHeader.vue'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import type { ViewId } from '@/components/AppHeader.vue'
 import { useHistory } from '@/composables/useHistory'
 import { useI18n } from '@/composables/useI18n'
+import { useServiceStatus } from '@/composables/useServiceStatus'
 import { useSettings } from '@/composables/useSettings'
 import { useDesktopWindow } from '@/composables/useDesktopWindow'
 import { useUsage } from '@/composables/useUsage'
@@ -28,6 +30,8 @@ const {
   apply,
 } = useUsage()
 const { history, loading: historyLoading, load: loadHistory } = useHistory()
+// Kopfzeile und Dashboard zeigen denselben Stand – ein Abruf für beide.
+const { serviceStatuses } = useServiceStatus()
 
 useDesktopWindow()
 
@@ -111,41 +115,45 @@ const shellClass = computed(() => ({
 </script>
 
 <template>
-  <div class="shell" :class="shellClass">
-    <AppHeader
-      :view="view"
-      :loading="loading"
-      :connected="connected"
-      :demo="isDemo"
-      @navigate="navigate"
-      @refresh="refreshNow"
-    />
+  <TooltipProvider>
+    <div class="shell" :class="shellClass">
+      <AppHeader
+        :view="view"
+        :loading="loading"
+        :connected="connected"
+        :demo="isDemo"
+        :service-statuses="serviceStatuses"
+        @navigate="navigate"
+        @refresh="refreshNow"
+      />
 
-    <DashboardView
-      v-if="view === 'dashboard'"
-      :providers="providers"
-      :history="history"
-      :history-hours="settings.historyHours"
-      :backend-error="backendError"
-      :backend-hint="backendHint"
-      :loading="loading"
-      :history-loading="historyLoading"
-      :placeholder-count="placeholderCount"
-      @retry="refreshNow"
-    />
-    <LogsView v-else-if="view === 'logs'" />
-    <SettingsView v-else :health="health" @changed="refresh" />
+      <DashboardView
+        v-if="view === 'dashboard'"
+        :providers="providers"
+        :history="history"
+        :history-hours="settings.historyHours"
+        :backend-error="backendError"
+        :backend-hint="backendHint"
+        :loading="loading"
+        :history-loading="historyLoading"
+        :placeholder-count="placeholderCount"
+        :service-statuses="serviceStatuses"
+        @retry="refreshNow"
+      />
+      <LogsView v-else-if="view === 'logs'" />
+      <SettingsView v-else :health="health" @changed="refresh" />
 
-    <footer class="foot">
-      <span>
-        <span class="pulse" :class="{ on: isAutoRefreshActive }" />
-        {{ isAutoRefreshActive ? t('footer.auto') : t('footer.paused') }}
-      </span>
-      <span>
-        {{ t('footer.sources', { seconds: usage?.poll_interval_seconds ?? 60 }) }}
-      </span>
-    </footer>
-  </div>
+      <footer class="foot">
+        <span>
+          <span class="pulse" :class="{ on: isAutoRefreshActive }" />
+          {{ isAutoRefreshActive ? t('footer.auto') : t('footer.paused') }}
+        </span>
+        <span>
+          {{ t('footer.sources', { seconds: usage?.poll_interval_seconds ?? 60 }) }}
+        </span>
+      </footer>
+    </div>
+  </TooltipProvider>
 </template>
 
 <style scoped>

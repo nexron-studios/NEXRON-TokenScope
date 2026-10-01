@@ -4,6 +4,8 @@ import { useNow } from "@vueuse/core";
 import { useI18n } from "@/composables/useI18n";
 import { useWeather } from "@/composables/useWeather";
 import WeatherBadge from "@/components/WeatherBadge.vue";
+import ServiceStatusBadge from "@/components/ServiceStatusBadge.vue";
+import type { ServiceStatus } from "@/api/types";
 import nexronLogo from "@/assets/logos/nexron_logo.svg";
 import {
   ChartColumn,
@@ -20,6 +22,7 @@ defineProps<{
   loading: boolean;
   connected: boolean;
   demo: boolean;
+  serviceStatuses: ServiceStatus[];
 }>();
 
 defineEmits<{ navigate: [ViewId]; refresh: [] }>();
@@ -46,22 +49,50 @@ const tabs = computed<Array<{ id: ViewId; label: string; icon: LucideIcon }>>(
 
 <template>
   <header class="head">
-    <div class="brand">
+    <!-- Reicht die Breite nicht, wird hier abgeschnitten statt über die
+         Reiter gemalt. Die Reihenfolge ist die Wichtigkeit von vorn: Was
+         hinten steht, gibt zuerst nach. -->
+    <div class="flex min-w-0 items-center gap-[0.7rem] overflow-hidden">
       <!-- Reine Herkunftsangabe: Der Schriftzug trägt keine Information, die
-           nicht anderswo steht, deshalb bleibt er aus dem Vorlesefluss. -->
-      <img :src="nexronLogo" class="logo" alt="" aria-hidden="true" />
+           nicht anderswo steht, deshalb bleibt er aus dem Vorlesefluss – und
+           räumt als Erstes den Platz, wenn der Bildschirm schmal wird.
+           Verkleinern ist keine Option: Unter etwa 1.4rem Höhe zerfällt seine
+           untere Zeile auf dem Panel zu einem grauen Balken. -->
+      <img
+        :src="nexronLogo"
+        class="hidden h-[1.45rem] w-auto flex-none lg:block"
+        alt=""
+        aria-hidden="true"
+      />
+      <span class="divider max-lg:hidden" />
+      <span class="clock shrink-0">{{ clock }}</span>
       <span class="divider" />
-      <span class="clock">{{ clock }}</span>
-      <span class="divider" />
-      <span class="state" :class="connected ? 'up' : 'down'">
-        <span class="dot" />
-        {{ connected ? t("nav.local") : t("nav.offline") }}
+      <span
+        class="flex shrink-0 items-center gap-[0.4rem] text-xs font-bold whitespace-nowrap"
+        :class="connected ? 'text-[#4f9d6d]' : 'text-[#d03b3b]'"
+        :title="connected ? t('nav.local') : t('nav.offline')"
+      >
+        <span class="size-[0.45rem] rounded-full bg-current" aria-hidden="true" />
+        <!-- Schmal bleibt nur der Punkt; der Text geht an den Screenreader
+             und steht im Tooltip. Offline zeigt ohnehin ein Banner. -->
+        <span class="max-lg:sr-only">{{ connected ? t("nav.local") : t("nav.offline") }}</span>
       </span>
       <span v-if="demo" class="demo">Demo</span>
 
-      <template v-if="weather">
+      <template v-if="serviceStatuses.length">
         <span class="divider" />
-        <WeatherBadge :report="weather" />
+        <ServiceStatusBadge
+          v-for="status in serviceStatuses"
+          :key="status.provider"
+          :status="status"
+        />
+      </template>
+
+      <!-- Das Wetter ist das Entbehrlichste in der Zeile: Schmal verschwindet
+           es ganz, statt den Anbieterstatus anzuschneiden. -->
+      <template v-if="weather">
+        <span class="divider max-md:hidden" />
+        <WeatherBadge class="max-md:hidden" :report="weather" />
       </template>
     </div>
 
@@ -73,10 +104,13 @@ const tabs = computed<Array<{ id: ViewId; label: string; icon: LucideIcon }>>(
         class="tab"
         :class="{ active: view === tab.id }"
         :aria-current="view === tab.id ? 'page' : undefined"
+        :title="tab.label"
         @click="$emit('navigate', tab.id)"
       >
         <component :is="tab.icon" class="size-4 shrink-0" aria-hidden="true" />
-        {{ tab.label }}
+        <!-- Unter 1280 px nur das Symbol: Die drei Beschriftungen kosten
+             ~250 px, und auf dem 1024er-Panel verdrängten sie den Status. -->
+        <span class="max-xl:sr-only">{{ tab.label }}</span>
       </button>
 
       <button
@@ -106,22 +140,7 @@ const tabs = computed<Array<{ id: ViewId; label: string; icon: LucideIcon }>>(
   flex-shrink: 0;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-width: 0;
-}
 
-/* Der Schriftzug ist zweizeilig: Unter etwa 1.4rem Höhe zerfällt die untere
-   Zeile auf dem Panel zu einem grauen Balken. Die schwarze Schattenkante der
-   Datei verschwindet auf dem dunklen Grund von selbst, es bleiben die weißen
-   Lettern. */
-.logo {
-  height: 1.45rem;
-  width: auto;
-  flex: none;
-}
 
 .clock {
   font-size: 1.35rem;
@@ -136,29 +155,9 @@ const tabs = computed<Array<{ id: ViewId; label: string; icon: LucideIcon }>>(
   background: rgb(255 255 255 / 12%);
 }
 
-.state {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #c2c2ca;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
 
-.dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
-  background: currentColor;
-}
 
-.state.up {
-  color: #4f9d6d;
-}
 
-.state.down {
-  color: #d03b3b;
-}
 
 .demo {
   border: 1px solid rgb(250 178 25 / 45%);
@@ -219,11 +218,4 @@ const tabs = computed<Array<{ id: ViewId; label: string; icon: LucideIcon }>>(
   opacity: 0.5;
 }
 
-/* Auf schmalen Geräten hat die Kopfzeile neben den Reitern kaum Platz: Der
-   Schriftzug tritt zurück, Uhr und Zustand bleiben. */
-@media (max-width: 420px) {
-  .logo {
-    height: 1.1rem;
-  }
-}
 </style>

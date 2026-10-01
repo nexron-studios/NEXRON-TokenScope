@@ -106,6 +106,17 @@ class Settings(BaseSettings):
     weather_place: str = ""
     weather_ttl_seconds: int = 900
 
+    # --- Anbieterstatus ---------------------------------------------------
+    # Die öffentlichen Statusseiten der Anbieter – ob Claude oder Codex selbst
+    # gerade gestört ist. Ohne das sieht ein Ausfall auf dem Dashboard aus wie
+    # ein Fehler hier: Die Kachel hält ihren letzten Wert und niemand weiß, warum.
+    service_status_enabled: bool = True
+    claude_status_url: str = "https://status.claude.com/api/v2/summary.json"
+    claude_status_history_url: str = "https://status.claude.com/api/v2/incidents.json"
+    codex_status_url: str = "https://status.openai.com/api/v2/summary.json"
+    codex_status_history_url: str = "https://status.openai.com/api/v2/incidents.json"
+    service_status_ttl_seconds: int = 60
+
     # --- Persistenz -------------------------------------------------------
     database_path: Path = BACKEND_ROOT / "data" / "usage.sqlite"
     history_enabled: bool = True

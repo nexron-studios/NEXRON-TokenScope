@@ -175,6 +175,75 @@ class WeatherReport(BaseModel):
     observed_at: datetime
 
 
+ComponentState = Literal[
+    "operational",
+    "under_maintenance",
+    "degraded_performance",
+    "partial_outage",
+    "major_outage",
+]
+
+#: Gesamtlage aus Sicht des Dashboards – die schlimmste der Einzelangaben.
+ServiceLevel = Literal["ok", "maintenance", "degraded", "outage"]
+
+
+class ServiceComponent(BaseModel):
+    """Ein Teil des Anbieters, von dem das Arbeiten hier abhängt."""
+
+    name: str
+    status: ComponentState
+
+
+class ServiceIncident(BaseModel):
+    """Eine Störungsmeldung der Statusseite.
+
+    Titel und Phase bleiben im Original: Die Statusseite schreibt englisch,
+    und eine Übersetzung des Titels wäre geraten. Die Oberfläche übersetzt nur
+    die Phase (``status``), die aus einer festen Liste kommt.
+    """
+
+    name: str
+    #: investigating · identified · monitoring · resolved
+    status: str
+    #: none · minor · major · critical
+    impact: str
+    started_at: datetime
+    resolved_at: datetime | None = None
+    url: str
+    components: list[str] = Field(default_factory=list)
+
+
+class ServiceMaintenance(BaseModel):
+    name: str
+    #: scheduled · in_progress
+    status: str
+    scheduled_for: datetime
+
+
+class ServiceStatus(BaseModel):
+    """Lage der Statusseite eines Anbieters, auf das Relevante eingedampft."""
+
+    provider: ProviderId
+    level: ServiceLevel
+    components: list[ServiceComponent]
+    #: Offene Störungen, die das Arbeiten mit diesem Anbieter betreffen.
+    incidents: list[ServiceIncident]
+    #: Eine laufende oder in den nächsten Stunden anstehende Wartung.
+    maintenance: ServiceMaintenance | None = None
+    #: Die zuletzt behobene Störung, solange sie noch frisch ist – erklärt im
+    #: Nachhinein, warum eben etwas gehakt hat.
+    recently_resolved: ServiceIncident | None = None
+    fetched_at: datetime
+    #: Der letzte Abruf ist gescheitert, ``fetched_at`` ist der letzte gute.
+    stale: bool = False
+    page_url: str
+
+
+class ServiceStatusResponse(BaseModel):
+    #: Ein Eintrag je Anbieter, dessen Statusseite schon einmal geantwortet hat.
+    providers: list[ServiceStatus]
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     version: str

@@ -132,7 +132,9 @@ const label = computed(() =>
       {{ temperature }}
     </span>
 
-    <span v-if="report.place" class="truncate text-xs font-bold">
+    <!-- Der Ort gibt als Erstes nach, wenn die Kopfzeile eng wird: Temperatur
+         und Tag/Nacht-Spanne sind die Information, der Ort nur ihr Etikett. -->
+    <span v-if="report.place" class="min-w-0 truncate text-xs font-bold">
       {{ report.place }}
     </span>
 
@@ -151,7 +153,7 @@ const label = computed(() =>
          steht es im Titel. -->
     <span
       v-else-if="hasRange"
-      class="hidden shrink-0 items-center gap-1.5 text-xs font-bold text-[#8a8a94] tabular-nums xl:flex"
+      class="hidden shrink-0 items-center gap-1.5 text-xs font-bold text-[#8a8a94] tabular-nums lg:flex"
     >
       <Sun class="size-3.5 text-[#c9a227]" aria-hidden="true" />
       {{ high }}

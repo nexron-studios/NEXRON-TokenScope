@@ -142,3 +142,47 @@ export interface WeatherReport {
   is_day: boolean
   observed_at: string
 }
+
+export const serviceLevelList = ['ok', 'maintenance', 'degraded', 'outage'] as const
+export type ServiceLevel = (typeof serviceLevelList)[number]
+
+export type ComponentState =
+  | 'operational'
+  | 'under_maintenance'
+  | 'degraded_performance'
+  | 'partial_outage'
+  | 'major_outage'
+
+export interface ServiceIncident {
+  /** Titel im Original der Statusseite (englisch) – übersetzt wird er nicht. */
+  name: string
+  /** investigating · identified · monitoring · resolved */
+  status: string
+  /** none · minor · major · critical */
+  impact: string
+  started_at: string
+  resolved_at: string | null
+  url: string
+  components: string[]
+}
+
+export interface ServiceStatus {
+  provider: ProviderId
+  level: ServiceLevel
+  /** Nur was das Arbeiten hier betrifft – bei Claude Code, API und claude.ai, bei Codex CLI und Login. */
+  components: Array<{ name: string; status: ComponentState }>
+  /** Offene Störungen, die hier etwas ausmachen. */
+  incidents: ServiceIncident[]
+  maintenance: { name: string; status: string; scheduled_for: string } | null
+  /** Die zuletzt behobene Störung, solange sie frisch ist. */
+  recently_resolved: ServiceIncident | null
+  fetched_at: string
+  /** Die Statusseite antwortet seit über zehn Minuten nicht. */
+  stale: boolean
+  page_url: string
+}
+
+export interface ServiceStatusResponse {
+  /** Ein Eintrag je Anbieter, dessen Statusseite schon einmal geantwortet hat. */
+  providers: ServiceStatus[]
+}

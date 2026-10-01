@@ -13,6 +13,7 @@ from .api import router
 from .config import Settings, get_settings
 from .logs import LogStore
 from .poller import UsagePoller
+from .service_status import ServiceStatusService
 from .storage import SnapshotStore
 from .weather import WeatherService
 
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI):
 
     app.state.logs = LogStore(settings)
     app.state.weather = WeatherService(settings)
+    app.state.service_status = ServiceStatusService(settings)
 
     poller = UsagePoller(settings, store)
     app.state.poller = poller

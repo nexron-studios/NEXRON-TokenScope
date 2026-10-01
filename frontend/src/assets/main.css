@@ -1,10 +1,17 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @theme {
   --font-sans: Inter, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   --color-shell-950: #0c0c0f;
   --color-shell-900: #111114;
   --color-shell-800: #16161a;
+
+  /* Nur fuer die shadcn-Bausteine unter components/ui: Deren Tooltip ist
+     bewusst umgekehrt – hell auf dem dunklen Dashboard, damit er sich vom
+     Inhalt darunter abhebt. Dieselben Werte wie Text und Grund in :root. */
+  --color-foreground: #f8f8fb;
+  --color-background: #0c0c0f;
 
   /* Der Kiosk wird aus zwei Metern Abstand gelesen, nicht am Schreibtisch.
      Darum liegt die ganze Gewichtsleiter hoeher als ueblich – auch die

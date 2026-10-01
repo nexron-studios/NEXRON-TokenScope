@@ -16,11 +16,13 @@ from .models import (
     HealthResponse,
     HistoryResponse,
     LogSummary,
+    ServiceStatusResponse,
     UsageResponse,
     WeatherReport,
 )
 from .normalize import now
 from .poller import UsagePoller
+from .service_status import ServiceStatusService
 from .storage import SnapshotStore
 from .weather import WeatherService
 
@@ -134,6 +136,22 @@ async def read_weather(request: Request) -> WeatherReport | None:
     """
     service: WeatherService = request.app.state.weather
     return await service.report()
+
+
+@router.get(
+    "/service-status",
+    response_model=ServiceStatusResponse,
+    summary="Lage der Anbieter-Statusseiten",
+)
+async def read_service_status(request: Request) -> ServiceStatusResponse:
+    """Liefert den zwischengespeicherten Stand je Anbieter.
+
+    Fehlt ein Anbieter, ist die Abfrage abgeschaltet oder seine Statusseite
+    hat noch nie geantwortet. Ein später gescheiterter Abruf liefert den alten
+    Stand mit ``stale``.
+    """
+    service: ServiceStatusService = request.app.state.service_status
+    return ServiceStatusResponse(providers=await service.statuses())
 
 
 @router.get("/health", response_model=HealthResponse, summary="Dienststatus")

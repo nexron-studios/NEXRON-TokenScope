@@ -3,6 +3,7 @@ import type {
   HistoryResponse,
   LogGroupBy,
   LogSummary,
+  ServiceStatusResponse,
   UsageResponse,
   WeatherReport,
 } from '@/api/types'
@@ -98,4 +99,8 @@ export const api = {
   /** `null` heißt: abgeschaltet oder gerade nicht erreichbar. */
   weather: (signal?: AbortSignal) =>
     request<WeatherReport | null>('/api/weather', signal),
+
+  /** Fehlt ein Anbieter, ist die Abfrage aus oder seine Statusseite hat nie geantwortet. */
+  serviceStatus: (signal?: AbortSignal) =>
+    request<ServiceStatusResponse>('/api/service-status', signal),
 }

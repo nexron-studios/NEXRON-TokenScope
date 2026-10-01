@@ -3,9 +3,11 @@ import { computed } from 'vue'
 import AlertBanner from '@/components/AlertBanner.vue'
 import ProviderCard from '@/components/ProviderCard.vue'
 import ProviderCardPlaceholder from '@/components/ProviderCardPlaceholder.vue'
+import ServiceIncidentCard from '@/components/ServiceIncidentCard.vue'
 import UsageHistoryChart from '@/components/UsageHistoryChart.vue'
 import { useI18n } from '@/composables/useI18n'
-import type { HistoryResponse, ProviderUsage } from '@/api/types'
+import { isDisrupted } from '@/utils/serviceStatus'
+import type { HistoryResponse, ProviderUsage, ServiceStatus } from '@/api/types'
 import { CircleOff } from '@lucide/vue'
 
 const props = defineProps<{
@@ -17,6 +19,7 @@ const props = defineProps<{
   loading?: boolean
   historyLoading?: boolean
   placeholderCount?: number
+  serviceStatuses: ServiceStatus[]
 }>()
 
 defineEmits<{ retry: [] }>()
@@ -24,6 +27,8 @@ defineEmits<{ retry: [] }>()
 const { t } = useI18n()
 
 const visibleIds = computed(() => props.providers.map((provider) => provider.id))
+
+const disrupted = computed(() => props.serviceStatuses.filter(isDisrupted))
 </script>
 
 <template>
@@ -35,6 +40,8 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
       :busy="loading"
       @retry="$emit('retry')"
     />
+
+    <ServiceIncidentCard v-if="disrupted.length" :statuses="disrupted" />
 
     <div v-if="providers.length" class="cards" :aria-busy="loading">
       <ProviderCard
@@ -64,8 +71,10 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
       {{ t('dashboard.noProviders') }}
     </p>
 
+    <!-- `!`: Das Panel setzt selbst `min-height: 0` und würde sonst unter
+         seinen eigenen Inhalt schrumpfen und in die Fußzeile ragen. -->
     <UsageHistoryChart
-      class="history"
+      class="min-h-[8.5rem]! flex-[1_1_0]"
       :history="history"
       :hours="historyHours"
       :visible-providers="visibleIds"
@@ -95,11 +104,6 @@ const visibleIds = computed(() => props.providers.map((provider) => provider.id)
   gap: 0.75rem;
   flex: 0 1 auto;
   min-height: 0;
-}
-
-.history {
-  flex: 1 1 0;
-  min-height: 8rem;
 }
 
 .empty {

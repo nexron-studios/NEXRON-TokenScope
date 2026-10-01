@@ -24,6 +24,8 @@ export interface AppSettings {
   nightMode: boolean
   /** Wetter in der Kopfzeile. Aus heißt auch: keine Ortung, kein Abruf. */
   showWeather: boolean
+  /** Claude-Störungen laut status.claude.com. Aus heißt: kein Abruf. */
+  showServiceStatus: boolean
   /** Fenstergröße der Desktop-Hülle – ohne Wirkung im Browser. */
   windowSize: WindowSize
 }
@@ -37,6 +39,7 @@ const DEFAULTS: AppSettings = {
   logDays: 7,
   nightMode: false,
   showWeather: true,
+  showServiceStatus: true,
   windowSize: 'medium',
 }
 
