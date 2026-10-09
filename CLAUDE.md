@@ -17,5 +17,5 @@ reload; the backend stays on 8787 and serves `/api`).
   and delete the block once it is empty — no blanket rewrites on sight.
 - Per-element runtime values come from `brandVars` as `:style` bindings.
 
-Everything else is loaded globally from `~/.claude/rules/` — nothing to import
+Everything else is loaded globally from `~/.claude/rules/brain/` — nothing to import
 here.
