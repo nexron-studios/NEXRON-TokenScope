@@ -141,7 +141,12 @@ const shellClass = computed(() => ({
         @retry="refreshNow"
       />
       <LogsView v-else-if="view === 'logs'" />
-      <SettingsView v-else :health="health" @changed="refresh" />
+      <SettingsView
+        v-else
+        :health="health"
+        :providers="usage?.providers ?? []"
+        @changed="refresh"
+      />
 
       <footer class="foot">
         <span>

@@ -8,9 +8,10 @@ from datetime import datetime, timedelta
 
 import httpx
 
+from .claude_accounts import ClaudeAccount, discover_claude_accounts
 from .cli_refresh import CliRefresher
 from .config import Settings
-from .models import ProviderUsage, UsageResponse
+from .models import AccountInfo, ProviderUsage, UsageResponse
 from .normalize import now
 from .providers import ClaudeProvider, CodexProvider, DemoProvider, Provider, build_error
 from .storage import SnapshotStore
@@ -48,7 +49,11 @@ def _describe_trouble(results: list[ProviderUsage]) -> str | None:
     ]
     if not troubled:
         return None
-    return "; ".join(f"{item.name}: {reason}" for item, reason in troubled)
+    return "; ".join(f"{_display_name(item)}: {reason}" for item, reason in troubled)
+
+
+def _display_name(item: ProviderUsage) -> str:
+    return f"{item.name} ({item.account.name})" if item.account else item.name
 
 
 def _is_auth_expired(item: ProviderUsage) -> bool:
@@ -60,16 +65,30 @@ def _is_auth_expired(item: ProviderUsage) -> bool:
     return "auth_expired" in (item.status, item.warning_status)
 
 
-def build_providers(settings: Settings) -> list[Provider]:
+def build_providers(settings: Settings, accounts: list[ClaudeAccount]) -> list[Provider]:
     if settings.demo_mode:
+        # Zwei Claude-Logins, damit die Mehr-Account-Ansicht ohne echte
+        # Anmeldungen entworfen werden kann.
         return [
-            DemoProvider("claude", "Claude Code", "Max"),
-            DemoProvider("codex", "Codex", "Plus"),
+            DemoProvider(
+                "claude",
+                "Claude Code",
+                "Max",
+                AccountInfo(id="demo-private", name="privat", email="privat@example.com"),
+            ),
+            DemoProvider(
+                "claude",
+                "Claude Code",
+                "Pro",
+                AccountInfo(id="demo-work", name="arbeit", email="arbeit@example.com"),
+                offset=0.9,
+            ),
+            DemoProvider("codex", "Codex", "Plus", offset=1.7),
         ]
 
     providers: list[Provider] = []
     if settings.claude_enabled:
-        providers.append(ClaudeProvider(settings))
+        providers.extend(ClaudeProvider(settings, account) for account in accounts)
     if settings.codex_enabled:
         providers.append(CodexProvider(settings))
     return providers
@@ -82,10 +101,18 @@ class UsagePoller:
     genau eine Kachel, nie das ganze Dashboard.
     """
 
-    def __init__(self, settings: Settings, store: SnapshotStore | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        store: SnapshotStore | None = None,
+        accounts: list[ClaudeAccount] | None = None,
+    ) -> None:
         self._settings = settings
         self._store = store
-        self._providers = build_providers(settings)
+        self._accounts = (
+            discover_claude_accounts(settings) if accounts is None else accounts
+        )
+        self._providers = build_providers(settings, self._accounts)
         self._client: httpx.AsyncClient | None = None
         self._task: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
@@ -152,6 +179,14 @@ class UsagePoller:
             return
 
         try:
+            if self._accounts and not self._settings.demo_mode:
+                adopted = store.adopt_legacy("claude", self._accounts[0].info.id)
+                if adopted:
+                    logger.info(
+                        "%d ältere Messpunkte dem Login %s zugeordnet",
+                        adopted,
+                        self._accounts[0].info.name,
+                    )
             # Der letzte echte Messwert bleibt als klar markierter Altstand
             # nützlicher als eine leere Kachel, auch wenn er lange zurückliegt.
             restored = store.latest_per_provider()
@@ -159,24 +194,34 @@ class UsagePoller:
             logger.exception("Letzter Stand konnte nicht geladen werden")
             return
 
+        # Nur Logins, die es noch gibt – und mit ihrem aktuellen Namen statt
+        # der bloßen ID aus der Datenbank.
+        by_key = {provider.key: provider for provider in self._providers}
         for entry in restored:
-            self._last_good[entry.id] = entry
-        if restored:
+            provider = by_key.get(entry.key)
+            if provider is None:
+                continue
+            self._last_good[entry.key] = self._own(provider, entry)
+        if self._last_good:
             logger.info(
                 "Letzter Stand für %s wiederhergestellt",
-                ", ".join(entry.name for entry in restored),
+                ", ".join(_display_name(entry) for entry in self._last_good.values()),
             )
 
-    def _credential_stamp(self) -> float | None:
-        """Änderungszeit der Claude-Credentials, sofern es sie als Datei gibt.
+    def _credential_stamp(self) -> tuple[float | None, ...]:
+        """Änderungszeiten der Claude-Credentials, sofern es sie als Datei gibt.
 
         Auf macOS liegt der Token im Keychain – dort gibt es nichts zu
         beobachten und es bleibt beim Intervall.
         """
-        try:
-            return self._settings.claude_credentials_path.stat().st_mtime
-        except OSError:
-            return None
+        stamps: list[float | None] = []
+        for account in self._accounts:
+            for path in account.credential_paths:
+                try:
+                    stamps.append(path.stat().st_mtime)
+                except OSError:
+                    stamps.append(None)
+        return tuple(stamps)
 
     async def _sleep_until_due(self, interval: int) -> None:
         """Wartet das Intervall ab – oder bis die CLI den Token erneuert hat.
@@ -192,7 +237,7 @@ class UsagePoller:
             waited += step
 
             current = self._credential_stamp()
-            if current is not None and current != stamp:
+            if current != stamp:
                 logger.info("credentials.changed: hole sofort neu")
                 return
 
@@ -277,8 +322,13 @@ class UsagePoller:
         self._schedule_renewals(results)
         return self._snapshot
 
+    @staticmethod
+    def _own(provider: Provider, result: ProviderUsage) -> ProviderUsage:
+        """Schreibt den Login an das Ergebnis – die Provider kennen nur ihren Abruf."""
+        return result.model_copy(update={"account": provider.account})
+
     async def _fetch_one(self, provider: Provider) -> ProviderUsage:
-        cooldown = self._cooldown_until.get(provider.id)
+        cooldown = self._cooldown_until.get(provider.key)
         if cooldown is not None:
             remaining = (cooldown - now()).total_seconds()
             if remaining > 0:
@@ -288,36 +338,43 @@ class UsagePoller:
                     else f"{round(remaining / 60)} min"
                 )
                 return self._bridge(
-                    build_error(
-                        provider.id,
-                        provider.name,
-                        "rate_limited",
-                        f"Drosselung, neuer Versuch in {wait}",
-                        retry_after_seconds=remaining,
+                    self._own(
+                        provider,
+                        build_error(
+                            provider.id,
+                            provider.name,
+                            "rate_limited",
+                            f"Drosselung, neuer Versuch in {wait}",
+                            retry_after_seconds=remaining,
+                        ),
                     )
                 )
-            del self._cooldown_until[provider.id]
+            del self._cooldown_until[provider.key]
 
         if self._client is None:
             return self._bridge(
-                build_error(
-                    provider.id, provider.name, "error", "HTTP-Client nicht bereit."
+                self._own(
+                    provider,
+                    build_error(
+                        provider.id, provider.name, "error", "HTTP-Client nicht bereit."
+                    ),
                 )
             )
 
         try:
             result = await provider.fetch(self._client)
         except Exception as exc:  # pragma: no cover - letzte Verteidigungslinie
-            logger.exception("Provider %s ist unerwartet gescheitert", provider.id)
+            logger.exception("Provider %s ist unerwartet gescheitert", provider.key)
             result = build_error(
                 provider.id,
                 provider.name,
                 "error",
                 f"Unerwarteter Fehler: {exc.__class__.__name__}",
             )
+        result = self._own(provider, result)
 
         if result.status == "ok":
-            self._last_good[provider.id] = result
+            self._last_good[provider.key] = result
             return result
 
         self._arm_cooldown(result)
@@ -330,9 +387,9 @@ class UsagePoller:
 
         wait = failure.retry_after_seconds or DEFAULT_RATE_LIMIT_COOLDOWN
         wait = min(max(wait, self._settings.poll_interval_seconds), MAX_COOLDOWN)
-        self._cooldown_until[failure.id] = now() + timedelta(seconds=wait)
+        self._cooldown_until[failure.key] = now() + timedelta(seconds=wait)
         logger.warning(
-            "%s ist ratenbegrenzt – pausiere %d s", failure.name, int(wait)
+            "%s ist ratenbegrenzt – pausiere %d s", _display_name(failure), int(wait)
         )
 
     def _bridge(self, failure: ProviderUsage) -> ProviderUsage:
@@ -342,7 +399,7 @@ class UsagePoller:
         ist als ``stale`` markiert. So kann die Oberfläche ihn als historischen
         Stand darstellen, statt bei einem abgelaufenen Token leer zu werden.
         """
-        previous = self._last_good.get(failure.id)
+        previous = self._last_good.get(failure.key)
         if previous is None:
             return failure
 
@@ -366,22 +423,22 @@ class UsagePoller:
         for item in results:
             if not _is_auth_expired(item):
                 continue
-            if not self._refresher.may_attempt(item.id):
+            if not self._refresher.may_attempt(item.key):
                 continue
 
             task = asyncio.create_task(
-                self._renew(item.id), name=f"cli-refresh-{item.id}"
+                self._renew(item.key), name=f"cli-refresh-{item.key}"
             )
             self._renewals.add(task)
             task.add_done_callback(self._renewals.discard)
 
-    async def _renew(self, provider_id: str) -> None:
-        provider = next((p for p in self._providers if p.id == provider_id), None)
+    async def _renew(self, key: str) -> None:
+        provider = next((p for p in self._providers if p.key == key), None)
         if provider is None:
             return
 
         try:
-            if not await self._refresher.trigger(provider_id):
+            if not await self._refresher.trigger(key, provider.refresh_env):
                 return
 
             # Ob das Kommando den Token wirklich erneuert hat, entscheidet der
@@ -392,17 +449,17 @@ class UsagePoller:
         except asyncio.CancelledError:
             raise
         except Exception:  # pragma: no cover - darf den Poller nie beschädigen
-            logger.exception("CLI-Anstoß für %s fehlgeschlagen", provider_id)
+            logger.exception("CLI-Anstoß für %s fehlgeschlagen", key)
             return
 
         if result.status == "ok" and not result.stale:
-            logger.info("cli.refresh_recovered: %s liefert wieder Werte", provider_id)
+            logger.info("cli.refresh_recovered: %s liefert wieder Werte", key)
             return
 
         logger.warning(
             "cli.refresh_ineffective: %s bleibt auf %s – erneuert das Kommando "
             "den Token überhaupt?",
-            provider_id,
+            key,
             result.warning_status or result.status,
         )
 
@@ -410,7 +467,7 @@ class UsagePoller:
         """Tauscht eine einzelne Kachel im aktuellen Snapshot aus."""
         moment = now()
         providers = [
-            result if item.id == result.id else item
+            result if item.key == result.key else item
             for item in self._snapshot.providers
         ]
         self._snapshot = self._snapshot.model_copy(

@@ -9,16 +9,18 @@ from ..normalize import parse_timestamp
 from .records import LogRecord, ReadResult, project_name, token_count
 
 
-def read_claude_records(root: Path, since: datetime) -> ReadResult:
+def read_claude_records(
+    roots: list[Path], since: datetime, account: str = ""
+) -> ReadResult:
+    """Liest die Sitzungslogs eines Logins – über alle seine Konfigurationsordner."""
     result = ReadResult()
-    if not root.is_dir():
-        return result
 
     # Claude schreibt bei Tool-Nutzung dieselbe Assistant-Nachricht mehrfach
     # mit identischer Usage. Die Message-ID verhindert Doppelzaehlung.
     messages: dict[str, LogRecord] = {}
 
-    for path in root.rglob("*.jsonl"):
+    paths = (path for root in roots if root.is_dir() for path in root.rglob("*.jsonl"))
+    for path in paths:
         try:
             if path.stat().st_mtime < since.timestamp():
                 continue
@@ -75,6 +77,7 @@ def read_claude_records(root: Path, since: datetime) -> ReadResult:
                             usage.get("cache_read_input_tokens")
                         ),
                     ),
+                    account=account,
                 )
 
     result.records.extend(messages.values())

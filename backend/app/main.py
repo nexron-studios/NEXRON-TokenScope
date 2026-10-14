@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .api import router
+from .claude_accounts import discover_claude_accounts
 from .config import Settings, get_settings
 from .logs import LogStore
 from .poller import UsagePoller
@@ -49,11 +50,19 @@ async def lifespan(app: FastAPI):
             store = None
     app.state.store = store
 
-    app.state.logs = LogStore(settings)
+    # Einmal beim Start: Ein neu angelegter Login erscheint nach einem Neustart.
+    accounts = [] if settings.demo_mode else discover_claude_accounts(settings)
+    app.state.claude_accounts = accounts
+    logger.info(
+        "Claude-Logins: %s",
+        ", ".join(account.info.name for account in accounts) or "keine",
+    )
+
+    app.state.logs = LogStore(settings, accounts)
     app.state.weather = WeatherService(settings)
     app.state.service_status = ServiceStatusService(settings)
 
-    poller = UsagePoller(settings, store)
+    poller = UsagePoller(settings, store, accounts)
     app.state.poller = poller
     await poller.start()
 

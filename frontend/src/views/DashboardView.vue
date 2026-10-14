@@ -7,6 +7,7 @@ import ServiceIncidentCard from '@/components/ServiceIncidentCard.vue'
 import UsageHistoryChart from '@/components/UsageHistoryChart.vue'
 import { useI18n } from '@/composables/useI18n'
 import { isDisrupted } from '@/utils/serviceStatus'
+import { scopeOf } from '@/utils/scope'
 import type { HistoryResponse, ProviderUsage, ServiceStatus } from '@/api/types'
 import { CircleOff } from '@lucide/vue'
 
@@ -26,8 +27,6 @@ defineEmits<{ retry: [] }>()
 
 const { t } = useI18n()
 
-const visibleIds = computed(() => props.providers.map((provider) => provider.id))
-
 const disrupted = computed(() => props.serviceStatuses.filter(isDisrupted))
 </script>
 
@@ -46,7 +45,7 @@ const disrupted = computed(() => props.serviceStatuses.filter(isDisrupted))
     <div v-if="providers.length" class="cards" :aria-busy="loading">
       <ProviderCard
         v-for="provider in providers"
-        :key="provider.id"
+        :key="scopeOf(provider)"
         :provider="provider"
         :backend-down="Boolean(backendError)"
       />
@@ -77,7 +76,7 @@ const disrupted = computed(() => props.serviceStatuses.filter(isDisrupted))
       class="min-h-[8.5rem]! flex-[1_1_0]"
       :history="history"
       :hours="historyHours"
-      :visible-providers="visibleIds"
+      :visible="providers"
       :loading="historyLoading"
     />
   </main>

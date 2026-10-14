@@ -153,6 +153,9 @@ const DE = {
   "settings.providers": "Sichtbare Anbieter",
   "settings.visible": "sichtbar",
   "settings.off": "aus",
+  "settings.accountsOf": "Logins von {provider}",
+  "settings.accountsHint":
+    "Jeder Login hat ein eigenes Kontingent. Ausgeblendete fehlen auch im Verlauf und in der Auswertung.",
   "settings.auto": "Automatisch aktualisieren",
   "settings.autoHint": "Das Backend pollt unabhängig davon weiter",
   "settings.interval": "Abholintervall",
@@ -369,6 +372,9 @@ const EN: Record<TranslationKey, string> = {
   "settings.providers": "Visible providers",
   "settings.visible": "visible",
   "settings.off": "off",
+  "settings.accountsOf": "{provider} logins",
+  "settings.accountsHint":
+    "Each login has its own quota. Hidden ones are also left out of the history and the usage report.",
   "settings.auto": "Update automatically",
   "settings.autoHint": "The backend continues polling independently",
   "settings.interval": "Refresh interval",

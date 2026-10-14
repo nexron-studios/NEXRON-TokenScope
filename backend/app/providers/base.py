@@ -6,13 +6,26 @@ from typing import Any, Protocol
 
 import httpx
 
-from ..models import ProviderId, ProviderStatus, ProviderUsage, SourceKind, UsageWindow
+from ..models import (
+    AccountInfo,
+    ProviderId,
+    ProviderStatus,
+    ProviderUsage,
+    SourceKind,
+    UsageWindow,
+)
 from ..normalize import extract_window, now
 
 
 class Provider(Protocol):
     id: ProviderId
     name: str
+    account: AccountInfo | None
+    #: ``scope_key(id, account)`` – Cooldowns, Überbrückung und CLI-Anstoß
+    #: laufen je Kachel, nicht je Anbieter.
+    key: str
+    #: Umgebung für den CLI-Anstoß, damit er den Token dieses Logins erneuert.
+    refresh_env: dict[str, str]
 
     async def fetch(self, client: httpx.AsyncClient) -> ProviderUsage:
         """Liefert immer ein ProviderUsage – Fehler werden zu Status, nicht zu Exceptions."""

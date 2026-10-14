@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from "vue";
 import { useElementSize, useNow } from "@vueuse/core";
-import { brandOf } from "@/theme/brands";
 import { useI18n } from "@/composables/useI18n";
-import type { HistoryResponse, ProviderId } from "@/api/types";
+import { buildHistorySeries, type ChartSeries } from "@/utils/historySeries";
+import type { HistoryResponse, ProviderUsage } from "@/api/types";
 import { ChartLine, Inbox } from "@lucide/vue";
 
 const props = defineProps<{
   history?: HistoryResponse;
   hours: number;
-  visibleProviders: ProviderId[];
+  /** Sichtbare Kacheln – je Login eine Linie, in derselben Reihenfolge. */
+  visible: ProviderUsage[];
   loading?: boolean;
 }>();
 
@@ -34,74 +35,9 @@ const HEIGHT = computed(() => Math.round(plotHeight.value) || 118);
 const chartNow = useNow({ interval: 60_000 });
 const chartWidth = computed(() => Math.max(320, width.value || 640));
 
-interface Point {
-  t: number;
-  used: number;
-}
-
-interface Series {
-  provider: ProviderId;
-  short: string;
-  color: string;
-  label: string;
-  points: Point[];
-  /** Jüngster Punkt – trägt Endmarker und Direktbeschriftung. */
-  last: Point;
-}
-
-/** Pro Anbieter genau eine Linie: das kürzeste gespeicherte Fenster. */
-const series = computed<Series[]>(() => {
-  const raw = props.history?.series ?? [];
-  const chosen = new Map<ProviderId, { rank: number; series: Series }>();
-
-  const rank = (key: string) =>
-    key === "five_hour" || key === "primary" ? 0 : key === "seven_day" ? 1 : 2;
-
-  for (const entry of raw) {
-    if (!props.visibleProviders.includes(entry.provider)) continue;
-
-    const entryRank = rank(entry.window_key);
-    const existing = chosen.get(entry.provider);
-    if (existing && existing.rank <= entryRank) continue;
-
-    const points = entry.points
-      .map((point) => ({
-        t: new Date(point.captured_at).getTime(),
-        used: point.used_percent,
-      }))
-      .filter((point) => Number.isFinite(point.t))
-      .sort((a, b) => a.t - b.t);
-
-    const last = points.at(-1);
-    if (!last) continue;
-
-    const brand = brandOf(entry.provider);
-    const labels: Record<string, string> = {
-      five_hour: "5 hours",
-      seven_day: "7 days",
-      seven_day_opus: "7 days · Opus",
-      seven_day_oauth_apps: "7 days · Apps",
-      monthly: "30 days",
-      primary: entry.label === "7 Tage" ? "7 days" : entry.label,
-    };
-    chosen.set(entry.provider, {
-      rank: entryRank,
-      series: {
-        provider: entry.provider,
-        short: brand.short,
-        color: brand.series,
-        label:
-          language.value === "en"
-            ? (labels[entry.window_key] ?? entry.label)
-            : entry.label,
-        points,
-        last,
-      },
-    });
-  }
-
-  return [...chosen.values()].map((item) => item.series);
-});
+const series = computed<ChartSeries[]>(() =>
+  buildHistorySeries(props.history?.series ?? [], props.visible, language.value),
+);
 
 /** Dieselben Daten als Zeilen – Grundlage der Tabellenansicht. */
 const tableRows = computed(() => {
@@ -143,7 +79,7 @@ const scaleY = (used: number) => {
  * Messpunkt liegt die Linie bei 0 %; der letzte bekannte Zustand reicht bis
  * „Jetzt“.
  */
-const pathOf = (entry: Series) => {
+const pathOf = (entry: ChartSeries) => {
   const { start, end } = domain.value;
   const first = entry.points[0];
   if (!first) return "";
@@ -247,9 +183,9 @@ const timeFormat = computed(
       </div>
 
       <ul v-if="series.length" class="legend">
-        <li v-for="entry in series" :key="entry.provider">
+        <li v-for="entry in series" :key="entry.key">
           <span class="swatch" :style="{ background: entry.color }" />
-          {{ entry.short }} · {{ entry.label }}
+          {{ entry.legend }} · {{ entry.label }}
         </li>
       </ul>
     </div>
@@ -319,11 +255,12 @@ const timeFormat = computed(
           :y2="HEIGHT - PAD.bottom"
         />
 
-        <g v-for="entry in series" :key="entry.provider">
+        <g v-for="entry in series" :key="entry.key">
           <path
             :d="pathOf(entry)"
             fill="none"
             :stroke="entry.color"
+            :stroke-dasharray="entry.dashed ? '5 4' : undefined"
             stroke-width="2"
             stroke-linejoin="round"
             stroke-linecap="round"
@@ -350,7 +287,7 @@ const timeFormat = computed(
         <g v-if="readout">
           <circle
             v-for="row in readout.rows"
-            :key="row.entry.provider"
+            :key="row.entry.key"
             :cx="scaleX(row.point.t)"
             :cy="scaleY(row.point.used)"
             r="4.5"
@@ -371,11 +308,11 @@ const timeFormat = computed(
       <p class="tooltip-time">{{ timeFormat.format(new Date(readout.at)) }}</p>
       <p
         v-for="row in readout.rows"
-        :key="row.entry.provider"
+        :key="row.entry.key"
         class="tooltip-row"
       >
         <span class="swatch" :style="{ background: row.entry.color }" />
-        {{ row.entry.short }}
+        {{ row.entry.legend }}
         <strong>{{ Math.round(row.point.used) }} %</strong>
       </p>
     </div>
@@ -390,8 +327,8 @@ const timeFormat = computed(
       <thead>
         <tr>
           <th>{{ t("history.time") }}</th>
-          <th v-for="entry in series" :key="entry.provider">
-            {{ entry.short }}
+          <th v-for="entry in series" :key="entry.key">
+            {{ entry.legend }}
           </th>
         </tr>
       </thead>

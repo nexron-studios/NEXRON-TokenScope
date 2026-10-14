@@ -214,10 +214,10 @@ Alles über Umgebungsvariablen mit dem Präfix `NEXRON_TOKENSCOPE_` oder über
 | `NEXRON_TOKENSCOPE_MAX_BRIDGE_MINUTES` | `30` | wie frisch ein Codex-Log sein muss, um als aktueller statt letzter Stand zu gelten |
 | `NEXRON_TOKENSCOPE_CLAUDE_CLI_REFRESH_COMMAND` | `["claude","doctor"]` | Kommando, das bei abgelaufenem Token die CLI anstößt. Leere Liste schaltet es ab. |
 | `NEXRON_TOKENSCOPE_CODEX_CLI_REFRESH_COMMAND` | `[]` | dasselbe für Codex – bewusst leer, siehe unten |
-| `NEXRON_TOKENSCOPE_CLI_REFRESH_MIN_INTERVAL_SECONDS` | `300` | Mindestabstand zwischen zwei Anstößen je Anbieter |
+| `NEXRON_TOKENSCOPE_CLI_REFRESH_MIN_INTERVAL_SECONDS` | `300` | Mindestabstand zwischen zwei Anstößen je Login |
 | `NEXRON_TOKENSCOPE_CLAUDE_USAGE_URL` / `…_CODEX_USAGE_URL` | Anbieter-Routen | nachziehbar, wenn sich eine Route ändert |
-| `NEXRON_TOKENSCOPE_CLAUDE_CREDENTIALS_PATH` / `…_CODEX_AUTH_PATH` | `~/.claude/.credentials.json` / `~/.codex/auth.json` | abweichender Ort der Anmeldedaten |
-| `NEXRON_TOKENSCOPE_CLAUDE_PROJECTS_DIR` / `…_CODEX_SESSIONS_DIR` | `~/.claude/projects` / `~/.codex/sessions` | Wurzel der Sitzungslogs |
+| `NEXRON_TOKENSCOPE_CLAUDE_CONFIG_DIRS` | `[]` → `~/.claude` + jedes `~/.claude-*` mit Login | Claude-Konfigurationsordner (`CLAUDE_CONFIG_DIR`), je Account eine Kachel. Ordner mit derselben Account-ID werden zusammengefasst; der Ordnername ohne `.claude-` ist der Anzeigename. Neue Logins erscheinen nach einem Neustart des Backends. |
+| `NEXRON_TOKENSCOPE_CODEX_AUTH_PATH` / `…_CODEX_SESSIONS_DIR` | `~/.codex/auth.json` / `~/.codex/sessions` | abweichender Ort von Anmeldedaten und Sitzungslogs |
 | `NEXRON_TOKENSCOPE_CODEX_LOG_FALLBACK` | `1` | `rate_limits` aus den Rollout-Logs, wenn die API schweigt |
 | `NEXRON_TOKENSCOPE_CODEX_CLI_FALLBACK` | `0` | zusätzlich `npx codex-check --json` versuchen |
 | `NEXRON_TOKENSCOPE_HISTORY_ENABLED` / `…_HISTORY_RETENTION_DAYS` | `1` / `90` | Snapshots nach SQLite schreiben, ältere täglich entfernen |

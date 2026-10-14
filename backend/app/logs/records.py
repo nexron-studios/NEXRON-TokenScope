@@ -15,6 +15,8 @@ class LogRecord:
     #: Sitzung, aus der die Nachricht stammt – je Anbieter eindeutig.
     session: str
     totals: TokenTotals
+    #: Login, aus dessen Konfigurationsordner die Zeile stammt – leer bei Codex.
+    account: str = ""
 
 
 @dataclass(slots=True)

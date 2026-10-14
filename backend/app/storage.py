@@ -6,25 +6,31 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
 
-from .models import HistoryPoint, HistorySeries, ProviderUsage, UsageWindow
+from .models import AccountInfo, HistoryPoint, HistorySeries, ProviderUsage, UsageWindow
 
 logger = logging.getLogger(__name__)
 
-_SCHEMA = """
+_TABLE = """
 CREATE TABLE IF NOT EXISTS snapshots (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    captured_at   TEXT    NOT NULL,
-    provider      TEXT    NOT NULL,
-    window_key    TEXT    NOT NULL,
-    label         TEXT    NOT NULL,
-    used_percent  REAL    NOT NULL,
-    resets_at     TEXT,
-    source        TEXT    NOT NULL,
-    UNIQUE(captured_at, provider, window_key)
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    captured_at     TEXT    NOT NULL,
+    provider        TEXT    NOT NULL,
+    account         TEXT    NOT NULL DEFAULT '',
+    window_key      TEXT    NOT NULL,
+    label           TEXT    NOT NULL,
+    used_percent    REAL    NOT NULL,
+    resets_at       TEXT,
+    source          TEXT    NOT NULL,
+    plan            TEXT,
+    window_minutes  INTEGER,
+    is_primary      INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(captured_at, provider, account, window_key)
 );
+"""
 
-CREATE INDEX IF NOT EXISTS idx_snapshots_series
-    ON snapshots(provider, window_key, captured_at);
+_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_snapshots_scope
+    ON snapshots(provider, account, window_key, captured_at);
 """
 
 # Nachträglich ergänzte Spalten. `CREATE TABLE IF NOT EXISTS` fasst eine
@@ -34,6 +40,24 @@ _ADDED_COLUMNS = {
     "window_minutes": "INTEGER",
     "is_primary": "INTEGER NOT NULL DEFAULT 0",
 }
+
+# `account` steckt im UNIQUE-Constraint – ohne ihn ersetzt der zweite
+# Claude-Login im selben Poll die Zeilen des ersten. Ein Constraint lässt sich
+# nicht nachrüsten, nur die Tabelle neu aufbauen. Bestehende Zeilen bekommen
+# den leeren Account; `adopt_legacy` ordnet sie danach dem Standardlogin zu.
+_ADD_ACCOUNT = f"""
+BEGIN;
+ALTER TABLE snapshots RENAME TO snapshots_legacy;
+{_TABLE}
+INSERT INTO snapshots
+    (captured_at, provider, account, window_key, label, used_percent,
+     resets_at, source, plan, window_minutes, is_primary)
+SELECT captured_at, provider, '', window_key, label, used_percent,
+       resets_at, source, plan, window_minutes, is_primary
+FROM snapshots_legacy;
+DROP TABLE snapshots_legacy;
+COMMIT;
+"""
 
 
 class SnapshotStore:
@@ -56,8 +80,9 @@ class SnapshotStore:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA journal_mode=WAL")
         connection.execute("PRAGMA synchronous=NORMAL")
-        connection.executescript(_SCHEMA)
+        connection.executescript(_TABLE)
         self._migrate(connection)
+        connection.executescript(_INDEX)
         self._connection = connection
 
     @staticmethod
@@ -71,6 +96,34 @@ class SnapshotStore:
                     f"ALTER TABLE snapshots ADD COLUMN {column} {definition}"
                 )
                 logger.info("Snapshot-Tabelle um Spalte %s ergänzt", column)
+
+        if "account" in existing:
+            return
+        try:
+            connection.executescript(_ADD_ACCOUNT)
+        except sqlite3.Error:
+            if connection.in_transaction:
+                connection.execute("ROLLBACK")
+            raise
+        logger.info("Snapshot-Tabelle um Spalte account ergänzt")
+
+    def adopt_legacy(self, provider: str, account: str) -> int:
+        """Ordnet Verlauf aus der Zeit vor den Accounts einem Login zu.
+
+        Bis dahin gab es genau einen Claude-Login, den aus ``~/.claude`` – seine
+        Zeilen tragen den leeren Account und gehören diesem Login.
+        """
+        if self._connection is None:
+            return 0
+        try:
+            cursor = self._connection.execute(
+                "UPDATE snapshots SET account = ? WHERE provider = ? AND account = ''",
+                (account, provider),
+            )
+        except sqlite3.Error as exc:
+            logger.warning("Alter Verlauf nicht zuordenbar: %s", exc)
+            return 0
+        return cursor.rowcount or 0
 
     def close(self) -> None:
         if self._connection is not None:
@@ -90,6 +143,7 @@ class SnapshotStore:
             (
                 stamp,
                 provider.id,
+                provider.account.id if provider.account else "",
                 window.key,
                 window.label,
                 window.used_percent,
@@ -115,9 +169,10 @@ class SnapshotStore:
             self._connection.executemany(
                 """
                 INSERT OR REPLACE INTO snapshots
-                    (captured_at, provider, window_key, label, used_percent,
-                     resets_at, source, plan, window_minutes, is_primary)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (captured_at, provider, account, window_key, label,
+                     used_percent, resets_at, source, plan, window_minutes,
+                     is_primary)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 rows,
             )
@@ -132,7 +187,7 @@ class SnapshotStore:
 
         since = datetime.now(timezone.utc) - timedelta(hours=hours)
         query = """
-            SELECT provider, window_key, label, captured_at, used_percent
+            SELECT provider, account, window_key, label, captured_at, used_percent
             FROM snapshots
             WHERE captured_at >= ?
         """
@@ -140,7 +195,7 @@ class SnapshotStore:
         if provider:
             query += " AND provider = ?"
             params.append(provider)
-        query += " ORDER BY provider, window_key, captured_at"
+        query += " ORDER BY provider, account, window_key, captured_at"
 
         try:
             rows = self._connection.execute(query, params).fetchall()
@@ -148,13 +203,14 @@ class SnapshotStore:
             logger.warning("Historie konnte nicht gelesen werden: %s", exc)
             return []
 
-        series: dict[tuple[str, str], HistorySeries] = {}
+        series: dict[tuple[str, str, str], HistorySeries] = {}
         for row in rows:
-            key = (row["provider"], row["window_key"])
+            key = (row["provider"], row["account"], row["window_key"])
             entry = series.get(key)
             if entry is None:
                 entry = HistorySeries(
                     provider=row["provider"],
+                    account=row["account"],
                     window_key=row["window_key"],
                     label=row["label"],
                     points=[],
@@ -183,16 +239,17 @@ class SnapshotStore:
         try:
             rows = self._connection.execute(
                 """
-                SELECT s.provider, s.window_key, s.label, s.used_percent,
-                       s.resets_at, s.source, s.plan, s.window_minutes,
-                       s.is_primary, s.captured_at
+                SELECT s.provider, s.account, s.window_key, s.label,
+                       s.used_percent, s.resets_at, s.source, s.plan,
+                       s.window_minutes, s.is_primary, s.captured_at
                 FROM snapshots AS s
                 JOIN (
-                    SELECT provider, MAX(captured_at) AS captured_at
+                    SELECT provider, account, MAX(captured_at) AS captured_at
                     FROM snapshots
-                    GROUP BY provider
+                    GROUP BY provider, account
                 ) AS newest
                   ON newest.provider = s.provider
+                 AND newest.account = s.account
                  AND newest.captured_at = s.captured_at
                 """
             ).fetchall()
@@ -200,12 +257,12 @@ class SnapshotStore:
             logger.warning("Letzter Stand nicht lesbar: %s", exc)
             return []
 
-        grouped: dict[str, list[sqlite3.Row]] = {}
+        grouped: dict[tuple[str, str], list[sqlite3.Row]] = {}
         for row in rows:
-            grouped.setdefault(row["provider"], []).append(row)
+            grouped.setdefault((row["provider"], row["account"]), []).append(row)
 
         restored: list[ProviderUsage] = []
-        for provider_id, entries in grouped.items():
+        for (provider_id, account), entries in grouped.items():
             newest = max(entries, key=lambda row: row["captured_at"])
             windows = [
                 UsageWindow(
@@ -227,6 +284,8 @@ class SnapshotStore:
                 ProviderUsage(
                     id=provider_id,  # type: ignore[arg-type]
                     name="Claude Code" if provider_id == "claude" else "Codex",
+                    # Name und Mail kennt nur der Poller – er setzt sie ein.
+                    account=AccountInfo(id=account, name=account) if account else None,
                     plan=newest["plan"],
                     windows=windows,
                     source=newest["source"],
@@ -251,6 +310,7 @@ class SnapshotStore:
                       SELECT MAX(latest.captured_at)
                       FROM snapshots AS latest
                       WHERE latest.provider = snapshots.provider
+                        AND latest.account = snapshots.account
                   )
                 """,
                 (cutoff.isoformat(),),

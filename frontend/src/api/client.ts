@@ -88,11 +88,17 @@ export const api = {
   history: (hours: number, signal?: AbortSignal) =>
     request<HistoryResponse>(`/api/history?hours=${hours}`, signal),
 
-  logs: (days: number, groupBy: LogGroupBy, signal?: AbortSignal) =>
-    request<LogSummary>(
-      `/api/logs/summary?days=${days}&group_by=${groupBy}`,
-      signal,
-    ),
+  /** `exclude`: ausgeblendete Anbieter (`codex`) und Logins (`claude:<id>`). */
+  logs: (
+    days: number,
+    groupBy: LogGroupBy,
+    exclude: string[],
+    signal?: AbortSignal,
+  ) => {
+    const query = new URLSearchParams({ days: String(days), group_by: groupBy })
+    for (const scope of exclude) query.append('exclude', scope)
+    return request<LogSummary>(`/api/logs/summary?${query}`, signal)
+  },
 
   health: (signal?: AbortSignal) => request<HealthResponse>('/api/health', signal),
 

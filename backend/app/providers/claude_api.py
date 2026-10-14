@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 import httpx
 
+from ..claude_accounts import (
+    CREDENTIALS_FILE,
+    ClaudeAccount,
+    is_default_dir,
+    keychain_service_for,
+)
 from ..config import Settings
-from ..credentials import CredentialError, load_claude_credential
-from ..models import ProviderUsage
+from ..credentials import Credential, CredentialError, load_claude_credential
+from ..models import ProviderUsage, scope_key
 from ..normalize import now, redact
 from .base import (
     build_error,
@@ -53,22 +60,62 @@ _PLAN_LABELS = {
 
 
 class ClaudeProvider:
-    """Fragt den undokumentierten OAuth-Usage-Endpunkt von Claude Code ab."""
+    """Fragt den undokumentierten OAuth-Usage-Endpunkt für einen Login ab."""
 
     id = "claude"
     name = "Claude Code"
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self, settings: Settings, account: ClaudeAccount, home: Path | None = None
+    ) -> None:
         self._settings = settings
+        self._account = account
+        self._home = home or Path.home()
+        self.account = account.info
+        self.key = scope_key(self.id, account.info.id)
+        #: Ordner, aus dem der zuletzt benutzte Token stammt.
+        self._active_dir = account.config_dirs[0]
+
+    @property
+    def refresh_env(self) -> dict[str, str]:
+        if is_default_dir(self._active_dir, self._home):
+            return {}
+        return {"CLAUDE_CONFIG_DIR": str(self._active_dir)}
+
+    def _load_credential(self) -> Credential:
+        """Der erste noch gültige Token unter den Ordnern dieses Accounts.
+
+        Hängen zwei Ordner am selben Account, darf ein abgelaufener Token im
+        einen nicht verdecken, dass der andere gerade frisch ist.
+        """
+        expired: tuple[Credential, Path] | None = None
+        failure: CredentialError | None = None
+        for directory in self._account.config_dirs:
+            try:
+                credential = load_claude_credential(
+                    directory / CREDENTIALS_FILE,
+                    keychain_service_for(
+                        directory, self._home, self._settings.claude_keychain_service
+                    ),
+                )
+            except CredentialError as exc:
+                failure = failure or exc
+                continue
+            if not credential.is_expired:
+                self._active_dir = directory
+                return credential
+            expired = expired or (credential, directory)
+
+        if expired is not None:
+            self._active_dir = expired[1]
+            return expired[0]
+        raise failure or CredentialError("Keine Claude-Anmeldung gefunden.")
 
     async def fetch(self, client: httpx.AsyncClient) -> ProviderUsage:
         settings = self._settings
 
         try:
-            credential = load_claude_credential(
-                settings.claude_credentials_path,
-                settings.claude_keychain_service,
-            )
+            credential = self._load_credential()
         except CredentialError as exc:
             return build_error(self.id, self.name, exc.kind, str(exc))
 

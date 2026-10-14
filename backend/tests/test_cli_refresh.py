@@ -3,13 +3,27 @@ from __future__ import annotations
 import asyncio
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
+from app.claude_accounts import ClaudeAccount
 from app.cli_refresh import CliRefresher, resolve_command
 from app.config import Settings
-from app.models import ProviderUsage, UsageWindow
+from app.models import AccountInfo, ProviderUsage, UsageWindow
 from app.normalize import now
 from app.poller import UsagePoller
 from app.providers.base import build_error
+
+
+ACCOUNT = ClaudeAccount(
+    info=AccountInfo(id="acc-1", name="privat"),
+    config_dirs=(Path("__missing_claude_dir__"),),
+)
+
+
+def _claude_error(status: str, message: str) -> ProviderUsage:
+    return build_error("claude", "Claude Code", status, message).model_copy(  # type: ignore[arg-type]
+        update={"account": ACCOUNT.info}
+    )
 
 
 class _StubRefresher:
@@ -22,8 +36,8 @@ class _StubRefresher:
     def may_attempt(self, provider_id: str) -> bool:
         return self._allowed
 
-    async def trigger(self, provider_id: str) -> bool:
-        self.calls.append(provider_id)
+    async def trigger(self, key: str, env: dict[str, str] | None = None) -> bool:
+        self.calls.append(key)
         # False beendet den Anstoß vor dem erneuten Abruf – der bräuchte einen
         # echten HTTP-Client.
         return False
@@ -35,6 +49,7 @@ def _bridged_claude() -> ProviderUsage:
     return ProviderUsage(
         id="claude",
         name="Claude Code",
+        account=ACCOUNT.info,
         plan="Pro",
         windows=[
             UsageWindow(
@@ -62,7 +77,7 @@ async def _drain(poller: UsagePoller) -> None:
 
 class RenewalSchedulingTests(unittest.IsolatedAsyncioTestCase):
     def _poller(self, stub: _StubRefresher) -> UsagePoller:
-        poller = UsagePoller(Settings(history_enabled=False))
+        poller = UsagePoller(Settings(history_enabled=False), accounts=[ACCOUNT])
         poller._refresher = stub  # type: ignore[assignment]
         return poller
 
@@ -71,11 +86,11 @@ class RenewalSchedulingTests(unittest.IsolatedAsyncioTestCase):
         poller = self._poller(stub)
 
         poller._schedule_renewals(
-            [build_error("claude", "Claude Code", "auth_expired", "Token abgelaufen.")]
+            [_claude_error("auth_expired", "Token abgelaufen.")]
         )
         await _drain(poller)
 
-        self.assertEqual(stub.calls, ["claude"])
+        self.assertEqual(stub.calls, ["claude:acc-1"])
 
     async def test_a_bridged_tile_still_triggers_the_cli(self) -> None:
         stub = _StubRefresher()
@@ -84,14 +99,14 @@ class RenewalSchedulingTests(unittest.IsolatedAsyncioTestCase):
         poller._schedule_renewals([_bridged_claude()])
         await _drain(poller)
 
-        self.assertEqual(stub.calls, ["claude"])
+        self.assertEqual(stub.calls, ["claude:acc-1"])
 
     async def test_missing_login_is_left_alone(self) -> None:
         stub = _StubRefresher()
         poller = self._poller(stub)
 
         poller._schedule_renewals(
-            [build_error("claude", "Claude Code", "auth_missing", "Nicht angemeldet.")]
+            [_claude_error("auth_missing", "Nicht angemeldet.")]
         )
         await _drain(poller)
 
@@ -102,7 +117,7 @@ class RenewalSchedulingTests(unittest.IsolatedAsyncioTestCase):
         poller = self._poller(stub)
 
         poller._schedule_renewals(
-            [build_error("claude", "Claude Code", "auth_expired", "Token abgelaufen.")]
+            [_claude_error("auth_expired", "Token abgelaufen.")]
         )
         await _drain(poller)
 

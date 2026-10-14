@@ -34,9 +34,30 @@ class UsageWindow(BaseModel):
     primary: bool = False
 
 
+def scope_key(provider: str, account: str | None) -> str:
+    """Eindeutiger Schlüssel einer Kachel: Anbieter, bei mehreren Logins mit Account.
+
+    Ohne Account bleibt es beim bloßen Anbieternamen – so behalten bestehende
+    Einstellungen, Cooldowns und Testdaten ihre Bedeutung.
+    """
+    return f"{provider}:{account}" if account else provider
+
+
+class AccountInfo(BaseModel):
+    """Wessen Kontingent eine Kachel zeigt, wenn ein Anbieter mehrere Logins hat."""
+
+    #: Stabil über Neustarts – die Account-UUID des Anbieters.
+    id: str
+    #: Kurzname für Legenden, z. B. `mackone` aus `~/.claude-mackone`.
+    name: str
+    email: str | None = None
+
+
 class ProviderUsage(BaseModel):
     id: ProviderId
     name: str
+    #: ``None`` bei Anbietern mit nur einem Login (Codex).
+    account: AccountInfo | None = None
     plan: str | None = None
     windows: list[UsageWindow] = Field(default_factory=list)
     source: SourceKind = "none"
@@ -63,6 +84,10 @@ class ProviderUsage(BaseModel):
     def is_usable(self) -> bool:
         return self.status == "ok" and bool(self.windows)
 
+    @property
+    def key(self) -> str:
+        return scope_key(self.id, self.account.id if self.account else None)
+
 
 class UsageResponse(BaseModel):
     generated_at: datetime
@@ -78,6 +103,8 @@ class HistoryPoint(BaseModel):
 
 class HistorySeries(BaseModel):
     provider: ProviderId
+    #: Account-ID, leer bei Anbietern mit nur einem Login.
+    account: str = ""
     window_key: str
     label: str
     points: list[HistoryPoint]

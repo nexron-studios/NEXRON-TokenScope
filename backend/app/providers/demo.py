@@ -5,7 +5,7 @@ from datetime import timedelta
 
 import httpx
 
-from ..models import ProviderId, ProviderUsage, UsageWindow
+from ..models import AccountInfo, ProviderId, ProviderUsage, UsageWindow, scope_key
 from ..normalize import clamp_percent, now
 
 
@@ -16,15 +16,27 @@ class DemoProvider:
     kennzeichnet diese Quelle sichtbar als Demo.
     """
 
-    def __init__(self, provider_id: ProviderId, name: str, plan: str) -> None:
+    refresh_env: dict[str, str] = {}
+
+    def __init__(
+        self,
+        provider_id: ProviderId,
+        name: str,
+        plan: str,
+        account: AccountInfo | None = None,
+        offset: float = 0.0,
+    ) -> None:
         self.id = provider_id
         self.name = name
+        self.account = account
+        self.key = scope_key(provider_id, account.id if account else None)
         self._plan = plan
+        self._offset = offset
 
     async def fetch(self, client: httpx.AsyncClient) -> ProviderUsage:
         moment = now()
         phase = moment.timestamp() / 900.0
-        offset = 0.0 if self.id == "claude" else 1.7
+        offset = self._offset
 
         short = clamp_percent(46 + 34 * math.sin(phase + offset))
         long = clamp_percent(58 + 12 * math.sin(phase / 6 + offset))

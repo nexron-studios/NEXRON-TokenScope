@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import StreamingResponse
 
 from . import __version__
+from .claude_accounts import ClaudeAccount
 from .config import Settings
 from .logs import LogStore
 from .models import (
@@ -115,10 +116,15 @@ async def read_log_summary(
     group_by: Annotated[
         Literal["day", "project", "model", "provider"], Query()
     ] = "day",
+    exclude: Annotated[
+        list[str],
+        Query(description="Ausgeblendet: `codex` oder einzelne Logins `claude:<id>`"),
+    ] = [],
 ) -> LogSummary:
     store: LogStore = request.app.state.logs
+    hidden = frozenset(exclude)
     return await anyio.to_thread.run_sync(
-        lambda: store.summary(days=days, group_by=group_by)
+        lambda: store.summary(days=days, group_by=group_by, exclude=hidden)
     )
 
 
@@ -158,6 +164,7 @@ async def read_service_status(request: Request) -> ServiceStatusResponse:
 async def read_health(request: Request) -> HealthResponse:
     settings = _settings(request)
     poller = _poller(request)
+    accounts: list[ClaudeAccount] = request.app.state.claude_accounts
 
     return HealthResponse(
         status="ok",
@@ -168,8 +175,12 @@ async def read_health(request: Request) -> HealthResponse:
         last_poll_at=poller.last_poll_at,
         last_poll_error=poller.last_error,
         sources={
-            "claude_credentials": settings.claude_credentials_path.exists(),
-            "claude_logs": settings.claude_projects_dir.is_dir(),
+            "claude_credentials": any(
+                path.exists() for account in accounts for path in account.credential_paths
+            ),
+            "claude_logs": any(
+                path.is_dir() for account in accounts for path in account.projects_dirs
+            ),
             "codex_credentials": settings.codex_auth_path.exists(),
             "codex_logs": settings.codex_sessions_dir.is_dir(),
         },

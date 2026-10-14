@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import ProviderMark from '@/components/ProviderMark.vue'
+import SettingsProviderVisibility from '@/components/SettingsProviderVisibility.vue'
 import TouchSegmented from '@/components/TouchSegmented.vue'
 import TouchToggle from '@/components/TouchToggle.vue'
 import { useSettings, windowSizeList } from '@/composables/useSettings'
 import { isDesktopShell } from '@/composables/useDesktopWindow'
 import { useI18n } from '@/composables/useI18n'
-import { BRANDS } from '@/theme/brands'
-import type { HealthResponse, ProviderId } from '@/api/types'
+import type { HealthResponse, ProviderUsage } from '@/api/types'
 import {
   Check,
   Clock,
   Database,
   DatabaseZap,
-  Eye,
-  EyeOff,
   Globe,
   Info,
   Lock,
@@ -28,7 +25,11 @@ import {
   type LucideIcon,
 } from '@lucide/vue'
 
-const props = defineProps<{ health?: HealthResponse }>()
+const props = defineProps<{
+  health?: HealthResponse
+  /** Alle Kacheln, auch ausgeblendete – für die Sichtbarkeits-Schalter. */
+  providers: ProviderUsage[]
+}>()
 const emit = defineEmits<{ changed: [] }>()
 
 const { settings, resetSettings } = useSettings()
@@ -91,8 +92,6 @@ const windowSizeHint = computed(() =>
     ? t('settings.windowSizeHint')
     : t('settings.windowSizeBrowserHint'),
 )
-
-const PROVIDERS: ProviderId[] = ['claude', 'codex']
 
 const sourceLabel = (key: string) => {
   const labels: Record<string, string> = {
@@ -197,30 +196,7 @@ const lastPoll = computed(() => {
           </p>
         </div>
 
-        <div class="stack">
-          <p class="caption">{{ t('settings.providers') }}</p>
-          <button
-            v-for="id in PROVIDERS"
-            :key="id"
-            type="button"
-            class="provider"
-            :class="{ off: !settings.enabledProviders[id] }"
-            role="switch"
-            :aria-checked="settings.enabledProviders[id]"
-            @click="settings.enabledProviders[id] = !settings.enabledProviders[id]"
-          >
-            <ProviderMark class="chip" :provider="id" :size="22" />
-            <span class="provider-name">{{ BRANDS[id].name }}</span>
-            <span class="provider-state">
-              <component
-                :is="settings.enabledProviders[id] ? Eye : EyeOff"
-                class="size-[0.9rem] shrink-0"
-                aria-hidden="true"
-              />
-              {{ settings.enabledProviders[id] ? t('settings.visible') : t('settings.off') }}
-            </span>
-          </button>
-        </div>
+        <SettingsProviderVisibility :providers="providers" />
       </template>
 
       <template v-else-if="section === 'daten'">
@@ -401,45 +377,6 @@ const lastPoll = computed(() => {
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-}
-
-.provider {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-height: 3.25rem;
-  border: 1px solid rgb(255 255 255 / 8%);
-  border-radius: 0.9rem;
-  background: rgb(255 255 255 / 3%);
-  color: #f4f4f6;
-  padding: 0 0.9rem;
-  touch-action: manipulation;
-}
-
-.provider.off {
-  color: #acacb6;
-}
-
-.provider.off .chip {
-  opacity: 0.35;
-}
-
-.chip {
-  flex-shrink: 0;
-}
-
-.provider-name {
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-.provider-state {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-left: auto;
-  color: #bababf;
-  font-size: 0.75rem;
 }
 
 .sources {

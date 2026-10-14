@@ -185,12 +185,14 @@ const updatedRelative = computed(() => {
         <span class="mark"><ProviderMark :provider="provider.id" /></span>
         <div class="min-w-0">
           <h2 class="wordmark">{{ provider.name }}</h2>
-          <p class="subline">
+          <!-- Der Login steht neben dem Plan: Bei zwei Claude-Kacheln ist er
+               der einzige Unterschied im Kopf. -->
+          <p class="subline truncate" :title="provider.account?.email ?? undefined">
             {{
               provider.plan
                 ? t("provider.plan", { plan: provider.plan })
                 : t("provider.planUnknown")
-            }}
+            }}<template v-if="provider.account"> · {{ provider.account.name }}</template>
           </p>
         </div>
       </div>

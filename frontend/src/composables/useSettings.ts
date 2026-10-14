@@ -16,6 +16,11 @@ export interface AppSettings {
   refreshIntervalSeconds: number
   /** Sichtbare Anbieter. */
   enabledProviders: Record<ProviderId, boolean>
+  /**
+   * Ausgeblendete Logins als `scopeKey` (`claude:<uuid>`). Eine Sperrliste
+   * statt einer Freigabeliste: Ein neu angemeldeter Account ist sofort sichtbar.
+   */
+  hiddenAccounts: string[]
   /** Zeitfenster des Verlaufscharts in Stunden. */
   historyHours: HistoryRange
   /** Tage, über die die JSONL-Logs ausgewertet werden. */
@@ -35,6 +40,7 @@ const DEFAULTS: AppSettings = {
   autoRefresh: true,
   refreshIntervalSeconds: 60,
   enabledProviders: { claude: true, codex: true },
+  hiddenAccounts: [],
   historyHours: 24,
   logDays: 7,
   nightMode: false,
@@ -67,6 +73,7 @@ export function useSettings() {
     settings.value = {
       ...DEFAULTS,
       enabledProviders: { ...DEFAULTS.enabledProviders },
+      hiddenAccounts: [],
     }
   }
 

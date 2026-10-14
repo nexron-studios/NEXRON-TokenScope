@@ -103,6 +103,9 @@ class CodexProvider:
 
     id = "codex"
     name = "Codex"
+    key = "codex"
+    account = None
+    refresh_env: dict[str, str] = {}
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings

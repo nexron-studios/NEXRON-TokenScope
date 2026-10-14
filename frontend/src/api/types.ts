@@ -23,9 +23,20 @@ export interface UsageWindow {
   primary: boolean
 }
 
+/** Wessen Kontingent eine Kachel zeigt, wenn ein Anbieter mehrere Logins hat. */
+export interface AccountInfo {
+  /** Account-UUID des Anbieters – stabil über Neustarts. */
+  id: string
+  /** Kurzname, z. B. `mackone` aus `~/.claude-mackone`. */
+  name: string
+  email: string | null
+}
+
 export interface ProviderUsage {
   id: ProviderId
   name: string
+  /** `null` bei Anbietern mit nur einem Login (Codex). */
+  account: AccountInfo | null
   plan: string | null
   windows: UsageWindow[]
   source: SourceKind
@@ -57,6 +68,8 @@ export interface HistoryPoint {
 
 export interface HistorySeries {
   provider: ProviderId
+  /** Account-ID, leer bei Anbietern mit nur einem Login. */
+  account: string
   window_key: string
   label: string
   points: HistoryPoint[]

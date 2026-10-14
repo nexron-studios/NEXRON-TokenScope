@@ -43,11 +43,14 @@ class Settings(BaseSettings):
 
     # --- Claude Code ------------------------------------------------------
     claude_enabled: bool = True
-    claude_credentials_path: Path = Path.home() / ".claude" / ".credentials.json"
+    # Jeder Ordner ist eine Claude-Code-Konfiguration (`CLAUDE_CONFIG_DIR`) mit
+    # eigenem Login, eigenen Sitzungslogs und damit eigenem Kontingent. Leer
+    # heißt: `~/.claude` plus jedes `~/.claude-*`, das eine Anmeldung enthält.
+    # Ordner desselben Accounts werden zu einer Kachel zusammengefasst.
+    claude_config_dirs: list[Path] = []
     claude_keychain_service: str = "Claude Code-credentials"
     claude_usage_url: str = "https://api.anthropic.com/api/oauth/usage"
     claude_oauth_beta: str = "oauth-2025-04-20"
-    claude_projects_dir: Path = Path.home() / ".claude" / "projects"
 
     # --- Codex ------------------------------------------------------------
     codex_enabled: bool = True

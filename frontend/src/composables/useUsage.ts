@@ -3,6 +3,7 @@ import { api, ApiError } from '@/api/client'
 import type { HealthResponse, UsageResponse } from '@/api/types'
 import { useSettings } from '@/composables/useSettings'
 import { useI18n } from '@/composables/useI18n'
+import { isScopeVisible } from '@/utils/scope'
 
 /**
  * Holt den Zustand ausschließlich vom lokalen Backend. Das Frontend spricht
@@ -20,8 +21,13 @@ export function useUsage() {
   let controller: AbortController | undefined
 
   const providers = computed(() =>
-    (usage.value?.providers ?? []).filter(
-      (provider) => settings.value.enabledProviders[provider.id] !== false,
+    (usage.value?.providers ?? []).filter((provider) =>
+      isScopeVisible(
+        settings.value.enabledProviders,
+        settings.value.hiddenAccounts,
+        provider.id,
+        provider.account?.id,
+      ),
     ),
   )
 
