@@ -89,8 +89,27 @@ export const BRANDS: Record<ProviderId, BrandTheme> = {
   },
 };
 
-export function brandOf(id: ProviderId): BrandTheme {
-  return BRANDS[id] ?? BRANDS.claude;
+type AccountTone = Pick<BrandTheme, "accent" | "track" | "series">;
+
+/**
+ * Akzente für den zweiten und jeden weiteren Login desselben Anbieters. Der
+ * erste behält den Markenton. Zwei Claude-Kacheln sollen sich auf einen Blick
+ * unterscheiden, ohne dass man den Kopf liest.
+ *
+ * Blau ist Anthropics eigene Zweitfarbe, Violett der nächste freie Ton. Gold,
+ * Rot und Grün scheiden aus, weil sie Zustände sind (siehe `SEVERITY`), Petrol
+ * ebenso, weil es Codex gehört.
+ */
+const ACCOUNT_TONES: readonly AccountTone[] = [
+  { accent: "#6a9bcc", track: "rgb(106 155 204 / 22%)", series: "#6a9bcc" },
+  { accent: "#a08fd8", track: "rgb(160 143 216 / 22%)", series: "#9a88d4" },
+];
+
+/** `tone` ist die Position des Logins unter den Logins seines Anbieters. */
+export function brandOf(id: ProviderId, tone = 0): BrandTheme {
+  const brand = BRANDS[id] ?? BRANDS.claude;
+  if (tone <= 0) return brand;
+  return { ...brand, ...ACCOUNT_TONES[(tone - 1) % ACCOUNT_TONES.length] };
 }
 
 /** CSS-Variablen einer Marke für `:style` auf dem Kachelelement. */

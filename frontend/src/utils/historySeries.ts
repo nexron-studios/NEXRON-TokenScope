@@ -18,8 +18,9 @@ export interface ChartSeries {
   legend: string
   color: string
   /**
-   * Zweiter und weiterer Login desselben Anbieters: gleiche Markenfarbe,
-   * gestrichelt. Die Identität hängt so nie allein an einer Farbnuance.
+   * Zweiter und weiterer Login desselben Anbieters: eigene Farbe wie seine
+   * Kachel, zusätzlich gestrichelt. Die Identität hängt so nie allein an der
+   * Farbe.
    */
   dashed: boolean
   label: string
@@ -59,6 +60,7 @@ const pointsOf = (entry: HistorySeries): ChartPoint[] =>
 export const buildHistorySeries = (
   raw: HistorySeries[],
   visible: ProviderUsage[],
+  tones: Record<string, number>,
   language: Language,
 ): ChartSeries[] => {
   const order = visible.map(scopeOf)
@@ -85,7 +87,8 @@ export const buildHistorySeries = (
     const found = chosen.get(scopeOf(usage))
     if (!found) return []
 
-    const brand = brandOf(usage.id)
+    const tone = tones[scopeOf(usage)] ?? 0
+    const brand = brandOf(usage.id, tone)
     const siblings = visible.filter((other) => other.id === usage.id)
     const account = siblings.length > 1 ? usage.account : null
 
@@ -96,7 +99,7 @@ export const buildHistorySeries = (
         short: account ? account.name : brand.short,
         legend: account ? `${brand.short} · ${account.name}` : brand.short,
         color: brand.series,
-        dashed: siblings.indexOf(usage) > 0,
+        dashed: tone > 0,
         label: windowLabel(found.entry, language),
         points: found.points,
         last: found.last,

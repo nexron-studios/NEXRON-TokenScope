@@ -11,6 +11,7 @@ const props = defineProps<{
   hours: number;
   /** Sichtbare Kacheln – je Login eine Linie, in derselben Reihenfolge. */
   visible: ProviderUsage[];
+  tones: Record<string, number>;
   loading?: boolean;
 }>();
 
@@ -36,7 +37,7 @@ const chartNow = useNow({ interval: 60_000 });
 const chartWidth = computed(() => Math.max(320, width.value || 640));
 
 const series = computed<ChartSeries[]>(() =>
-  buildHistorySeries(props.history?.series ?? [], props.visible, language.value),
+  buildHistorySeries(props.history?.series ?? [], props.visible, props.tones, language.value),
 );
 
 /** Dieselben Daten als Zeilen – Grundlage der Tabellenansicht. */

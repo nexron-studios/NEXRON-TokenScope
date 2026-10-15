@@ -26,6 +26,8 @@ import {
 
 const props = defineProps<{
   provider: ProviderUsage;
+  /** Zweiter und weiterer Login desselben Anbieters bekommt einen eigenen Akzent. */
+  tone?: number;
   /** Das Frontend erreicht sein Backend nicht – der Begleiter zeigt es mit. */
   backendDown?: boolean;
 }>();
@@ -33,7 +35,7 @@ const props = defineProps<{
 const { language, locale, t } = useI18n();
 const clock = useNow({ interval: 60_000 });
 
-const brand = computed(() => brandOf(props.provider.id));
+const brand = computed(() => brandOf(props.provider.id, props.tone));
 const vars = computed(() => brandVars(brand.value));
 
 /** Das kürzeste Fenster ist im Alltag das relevante. */

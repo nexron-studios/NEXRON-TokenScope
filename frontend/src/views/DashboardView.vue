@@ -13,6 +13,8 @@ import { CircleOff } from '@lucide/vue'
 
 const props = defineProps<{
   providers: ProviderUsage[]
+  /** `accountTonesOf` – welche Farbe ein Login trägt, nach `scopeKey`. */
+  accountTones: Record<string, number>
   history?: HistoryResponse
   historyHours: number
   backendError?: string
@@ -47,6 +49,7 @@ const disrupted = computed(() => props.serviceStatuses.filter(isDisrupted))
         v-for="provider in providers"
         :key="scopeOf(provider)"
         :provider="provider"
+        :tone="accountTones[scopeOf(provider)] ?? 0"
         :backend-down="Boolean(backendError)"
       />
     </div>
@@ -77,6 +80,7 @@ const disrupted = computed(() => props.serviceStatuses.filter(isDisrupted))
       :history="history"
       :hours="historyHours"
       :visible="providers"
+      :tones="accountTones"
       :loading="historyLoading"
     />
   </main>

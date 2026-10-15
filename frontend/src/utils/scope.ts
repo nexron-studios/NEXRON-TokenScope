@@ -10,6 +10,22 @@ export const scopeKey = (provider: ProviderId, account?: string | null): string 
 export const scopeOf = (usage: ProviderUsage): string =>
   scopeKey(usage.id, usage.account?.id)
 
+/**
+ * Position jedes Logins unter den Logins seines Anbieters, nach `scopeKey`.
+ * Gezählt wird über die ungefilterte Liste: Blendet jemand einen Login aus,
+ * behalten die übrigen ihre Farbe.
+ */
+export const accountTonesOf = (all: ProviderUsage[]): Record<string, number> => {
+  const counted: Partial<Record<ProviderId, number>> = {}
+  return Object.fromEntries(
+    all.map((usage) => {
+      const tone = counted[usage.id] ?? 0
+      counted[usage.id] = tone + 1
+      return [scopeOf(usage), tone]
+    }),
+  )
+}
+
 /** Ein Login ist sichtbar, wenn sein Anbieter an und er selbst nicht ausgeblendet ist. */
 export const isScopeVisible = (
   enabledProviders: Record<ProviderId, boolean>,

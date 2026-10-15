@@ -22,6 +22,7 @@ const {
   usage,
   health,
   providers,
+  accountTones,
   isDemo,
   loading,
   backendError,
@@ -130,6 +131,7 @@ const shellClass = computed(() => ({
       <DashboardView
         v-if="view === 'dashboard'"
         :providers="providers"
+        :account-tones="accountTones"
         :history="history"
         :history-hours="settings.historyHours"
         :backend-error="backendError"
