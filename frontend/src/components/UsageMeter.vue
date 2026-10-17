@@ -101,7 +101,7 @@ const fill = computed(() =>
  */
 .meter-track {
   overflow: hidden;
-  height: 0.875rem;
+  height: 1.125rem;
   margin-top: 0.4rem;
   border-radius: 999px;
   /* Hellerer Schritt derselben Rampe: Der Zustand liest sich über die

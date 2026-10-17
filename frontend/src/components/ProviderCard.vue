@@ -10,22 +10,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useI18n } from "@/composables/useI18n";
-import {
-  brandOf,
-  brandVars,
-  SEVERITY,
-  severityOf,
-  type Severity,
-} from "@/theme/brands";
+import { brandOf, brandVars } from "@/theme/brands";
 import type { ProviderUsage, UsageWindow } from "@/api/types";
-import {
-  CircleCheck,
-  ClockFading,
-  OctagonAlert,
-  ScrollText,
-  TriangleAlert,
-  type LucideIcon,
-} from "@lucide/vue";
+import { ClockFading, ScrollText, TriangleAlert } from "@lucide/vue";
 
 const props = defineProps<{
   provider: ProviderUsage;
@@ -58,10 +45,6 @@ const secondary = computed(() =>
  */
 const meters = computed(() =>
   primary.value ? [primary.value, ...secondary.value] : [],
-);
-
-const severity = computed(() =>
-  primary.value ? severityOf(primary.value.remaining_percent) : "ok",
 );
 
 /** Oberhalb der Hälfte neutral, darunter von Gold bis Rot zunehmend deutlich. */
@@ -118,18 +101,6 @@ const emptyMessage = computed(
   () => statusHint.value || t("provider.noData"),
 );
 
-const severityLabel = computed(() => t(`provider.status.${severity.value}`));
-
-const SEVERITY_ICON: Record<Severity, LucideIcon> = {
-  ok: CircleCheck,
-  warning: TriangleAlert,
-  critical: OctagonAlert,
-};
-
-// Bei gehaltenen Werten sagt das Symbol das Alter, nicht den Füllstand.
-const stateIcon = computed<LucideIcon>(() =>
-  props.provider.stale ? ClockFading : SEVERITY_ICON[severity.value],
-);
 
 const windowLabel = (window: UsageWindow): string => {
   if (language.value === "de") return window.label;
@@ -221,37 +192,21 @@ const updatedRelative = computed(() => {
     </header>
 
     <div v-if="primary" class="body">
-      <div class="flex items-end justify-between gap-4">
-        <div class="min-w-0">
-          <p class="eyebrow truncate">
-            {{
-              t(provider.stale ? "provider.lastKnown" : "provider.available", {
-                label: windowLabel(primary),
-              })
-            }}
-          </p>
-          <p class="figure" :style="quotaStyle">
-            {{ Math.round(primary.remaining_percent)
-            }}<span class="unit">%</span>
-          </p>
-        </div>
-
-        <!-- Die Resets nennen die Balken. Hier steht der Zustand: Symbol und
-             Wort tragen die Bedeutung, die Farbe verstärkt sie nur. -->
-        <span
-          class="mb-1.5 inline-flex shrink-0 items-center gap-[0.3rem] whitespace-nowrap rounded-full border border-brand-hairline bg-brand-surface-raised px-2.5 py-1 text-[0.6875rem] font-extrabold text-brand-ink-muted"
-          :style="{
-            color: severity === 'ok' ? undefined : SEVERITY[severity].color,
-          }"
-        >
-          <component
-            :is="stateIcon"
-            class="size-[0.85rem] shrink-0"
-            :stroke-width="2.4"
-            aria-hidden="true"
-          />
-          {{ provider.stale ? t("provider.status.stale") : severityLabel }}
-        </span>
+      <!-- Kein eigenes Zustandswort: Den Altstand nennt das Badge im Kopf,
+           die Knappheit färbt Zahl und Balken, und jeder Balken sagt sie
+           Screenreadern als Text. -->
+      <div class="min-w-0">
+        <p class="eyebrow truncate">
+          {{
+            t(provider.stale ? "provider.lastKnown" : "provider.available", {
+              label: windowLabel(primary),
+            })
+          }}
+        </p>
+        <p class="figure" :style="quotaStyle">
+          {{ Math.round(primary.remaining_percent)
+          }}<span class="unit">%</span>
+        </p>
       </div>
 
       <div class="body-row">
@@ -451,7 +406,7 @@ const updatedRelative = computed(() => {
 
 .figure {
   margin-top: 0.05rem;
-  font-size: 2.9rem;
+  font-size: 3.4rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: -0.045em;
@@ -488,7 +443,7 @@ const updatedRelative = computed(() => {
   flex: 1;
   gap: 0.9rem;
   min-height: 0;
-  margin-top: 0.85rem;
+  margin-top: 1rem;
   padding-bottom: 0.35rem;
 }
 
@@ -496,7 +451,7 @@ const updatedRelative = computed(() => {
 .meters {
   display: grid;
   flex: 1;
-  gap: 0.7rem;
+  gap: 1.1rem;
   min-width: 0;
 }
 
@@ -618,7 +573,7 @@ const updatedRelative = computed(() => {
   }
 
   .figure {
-    font-size: 2.35rem;
+    font-size: 2.7rem;
   }
 
   .body-row {
@@ -627,7 +582,7 @@ const updatedRelative = computed(() => {
   }
 
   .meters {
-    gap: 0.5rem;
+    gap: 0.8rem;
   }
 }
 

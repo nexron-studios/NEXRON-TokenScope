@@ -125,7 +125,6 @@ const DE = {
   "provider.status.ok": "Reichlich",
   "provider.status.warning": "Wird knapp",
   "provider.status.critical": "Kritisch",
-  "provider.status.stale": "Nicht aktuell",
   "provider.error.auth_missing":
     "Keine Anmeldedaten gefunden. Melde dich in der CLI an.",
   "provider.error.auth_expired":
@@ -355,7 +354,6 @@ const EN: Record<TranslationKey, string> = {
   "provider.status.ok": "Plenty",
   "provider.status.warning": "Running low",
   "provider.status.critical": "Critical",
-  "provider.status.stale": "Not current",
   "provider.error.auth_missing":
     "No credentials found. Sign in through the CLI.",
   "provider.error.auth_expired": "Token expired. Open the CLI to renew it.",
