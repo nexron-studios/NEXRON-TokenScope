@@ -4,6 +4,11 @@ import { useNow } from "@vueuse/core";
 import ProviderMark from "@/components/ProviderMark.vue";
 import ProviderMascot from "@/components/ProviderMascot.vue";
 import UsageMeter from "@/components/UsageMeter.vue";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useResetCountdown } from "@/composables/useResetCountdown";
 import { useI18n } from "@/composables/useI18n";
 import {
@@ -82,9 +87,24 @@ const quotaStyle = computed((): Record<string, string> => {
   };
 });
 
-const { countdown, resetDate, isDue } = useResetCountdown(
-  () => primary.value?.resets_at,
+/**
+ * Groß steht der Reset des längsten Fensters: Erst danach ist wieder alles
+ * frei. Bei Gleichstand gewinnt das zuerst sortierte (`seven_day` vor
+ * `seven_day_opus`).
+ */
+const longest = computed(() =>
+  props.provider.windows.reduce<UsageWindow | undefined>(
+    (best, window) =>
+      (window.window_minutes ?? 0) > (best?.window_minutes ?? 0) ? window : best,
+    primary.value,
+  ),
 );
+
+const { countdown, resetDate, isDue } = useResetCountdown(
+  () => longest.value?.resets_at,
+);
+const { countdown: primaryCountdown, resetDate: primaryResetDate } =
+  useResetCountdown(() => primary.value?.resets_at);
 
 const sourceLabel = computed(() =>
   t(`provider.source.${props.provider.source}`),
@@ -102,6 +122,17 @@ const warningHint = computed(() => {
   const reason = props.provider.warning_status;
   if (!reason || reason === "ok") return undefined;
   return t(`provider.error.${reason}`);
+});
+
+/** Die Fußzeile hat Platz für zwei Wörter, der ganze Satz steht im Tooltip. */
+const footReason = computed(() => {
+  const reason =
+    props.provider.warning_status && props.provider.warning_status !== "ok"
+      ? props.provider.warning_status
+      : props.provider.status;
+  return reason === "ok"
+    ? t("provider.valueHeld")
+    : t(`provider.errorShort.${reason}`);
 });
 
 const emptyMessage = computed(
@@ -163,6 +194,7 @@ const updatedRelative = computed(() => {
   const ageMinutes = Math.max(0, (clock.value.getTime() - fetchedAt) / 60_000);
   const formatter = new Intl.RelativeTimeFormat(locale.value, {
     numeric: "auto",
+    style: "short",
   });
 
   if (ageMinutes < 1) return t("provider.justNow");
@@ -254,17 +286,45 @@ const updatedRelative = computed(() => {
                   ? "provider.resetWas"
                   : "provider.reset",
               )
-            }}
+            }}<template v-if="longest && longest !== primary">
+              · {{ windowLabel(longest) }}</template
+            >
           </p>
           <!-- „bereits erfolgt“ ist ein Satz, keine Uhrzeit: In der Größe der
                Countdown-Ziffern verdrängte er die Zeile links. -->
-          <p
-            class="countdown"
-            :class="{ 'countdown-word': provider.stale && isDue }"
+          <Tooltip :disabled="!resetDate">
+            <TooltipTrigger as-child>
+              <p
+                class="countdown"
+                :class="{ 'countdown-word': provider.stale && isDue }"
+                :tabindex="resetDate ? 0 : undefined"
+              >
+                {{
+                  provider.stale && isDue ? t("provider.expired") : countdown
+                }}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{{ resetDate }}</TooltipContent>
+          </Tooltip>
+          <!-- Das kurze Fenster rückt in die Fußnote: im Alltag gefragt, aber
+               nicht die Antwort auf „wann ist wieder alles frei“. -->
+          <Tooltip
+            v-if="longest !== primary && primary.resets_at"
+            :disabled="!primaryResetDate"
           >
-            {{ provider.stale && isDue ? t("provider.expired") : countdown }}
+            <TooltipTrigger as-child>
+              <p
+                class="text-[0.6875rem] text-brand-ink-subtle tabular-nums whitespace-nowrap"
+                tabindex="0"
+              >
+                {{ windowLabel(primary) }} · {{ primaryCountdown }}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{{ primaryResetDate }}</TooltipContent>
+          </Tooltip>
+          <p v-else-if="resetDate" class="text-[0.6875rem] text-brand-ink-subtle">
+            {{ resetDate }}
           </p>
-          <p v-if="resetDate" class="footnote">{{ resetDate }}</p>
         </div>
       </div>
 
@@ -301,39 +361,60 @@ const updatedRelative = computed(() => {
       </div>
     </div>
 
-    <footer class="foot">
-      <span :title="t('provider.updatedExact', { time: updatedAt })">
-        {{ t("provider.updatedAgo", { relative: updatedRelative }) }}
-      </span>
+    <footer
+      class="flex shrink-0 justify-between gap-3 border-t border-brand-hairline pt-2 text-[0.6875rem] text-brand-ink-subtle"
+    >
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <span class="truncate" tabindex="0">
+            {{ t("provider.updatedAgo", { relative: updatedRelative }) }}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">{{
+          t("provider.updatedExact", { time: updatedAt })
+        }}</TooltipContent>
+      </Tooltip>
       <!-- Das Alter steht schon links – hier zählt der Grund. -->
-      <span
-        v-if="provider.stale"
-        class="foot-note"
-        :title="
-          t('provider.staleTitle', {
+      <Tooltip v-if="provider.stale">
+        <TooltipTrigger as-child>
+          <span
+            class="flex min-w-0 max-w-[62%] items-center gap-[0.3rem]"
+            tabindex="0"
+          >
+            <component
+              :is="warningHint ? TriangleAlert : ClockFading"
+              class="size-3 shrink-0"
+              :stroke-width="2.2"
+              aria-hidden="true"
+            />
+            <span class="truncate">{{ footReason }}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" class="max-w-80">{{
+          t("provider.staleTitle", {
             relative: updatedRelative,
-            reason: warningHint || statusHint || t('provider.fetchFailed'),
+            reason: warningHint || statusHint || t("provider.fetchFailed"),
           })
-        "
-      >
-        <component
-          :is="warningHint ? TriangleAlert : ClockFading"
-          class="size-3 shrink-0"
-          :stroke-width="2.2"
-          aria-hidden="true"
-        />
-        <span class="truncate">{{
-          warningHint || statusHint || t("provider.valueHeld")
-        }}</span>
-      </span>
-      <span v-else-if="provider.source === 'logs'" class="foot-note">
-        <ScrollText
-          class="size-3 shrink-0"
-          :stroke-width="2.2"
-          aria-hidden="true"
-        />
-        <span class="truncate">{{ t("provider.fromLogs") }}</span>
-      </span>
+        }}</TooltipContent>
+      </Tooltip>
+      <Tooltip v-else-if="provider.source === 'logs'">
+        <TooltipTrigger as-child>
+          <span
+            class="flex min-w-0 max-w-[62%] items-center gap-[0.3rem]"
+            tabindex="0"
+          >
+            <ScrollText
+              class="size-3 shrink-0"
+              :stroke-width="2.2"
+              aria-hidden="true"
+            />
+            <span class="truncate">{{ t("provider.fromLogsShort") }}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" class="max-w-80">{{
+          t("provider.fromLogs")
+        }}</TooltipContent>
+      </Tooltip>
     </footer>
   </article>
 </template>
@@ -433,14 +514,6 @@ const updatedRelative = computed(() => {
   color: #fab219;
 }
 
-.foot-note {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  max-width: 62%;
-  min-width: 0;
-}
-
 .eyebrow {
   color: var(--brand-ink-subtle);
   font-size: 0.625rem;
@@ -481,12 +554,6 @@ const updatedRelative = computed(() => {
 .countdown-word {
   font-size: 0.8125rem;
   line-height: 1.3;
-}
-
-.footnote,
-.foot {
-  color: var(--brand-ink-subtle);
-  font-size: 0.6875rem;
 }
 
 /* Wird es eng, rutscht der Zustand als Ganzes in die zweite Zeile – lieber
@@ -643,15 +710,6 @@ const updatedRelative = computed(() => {
   font-size: 0.75rem;
   line-height: 1.45;
   text-wrap: pretty;
-}
-
-.foot {
-  display: flex;
-  flex-shrink: 0;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-top: 1px solid var(--brand-hairline);
-  padding-top: 0.5rem;
 }
 
 /* Steht ein Banner über den Kacheln oder ist das Panel ohnehin niedrig, fehlen
