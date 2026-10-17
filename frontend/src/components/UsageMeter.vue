@@ -2,15 +2,31 @@
 import { computed } from "vue";
 import { SEVERITY, severityOf } from "@/theme/brands";
 import { useI18n } from "@/composables/useI18n";
+import { useResetCountdown } from "@/composables/useResetCountdown";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const props = defineProps<{
   /** Verbleibendes Kontingent in Prozent. */
   remaining: number;
   label: string;
+  resetsAt: string | null;
 }>();
 
 const { t } = useI18n();
+const { countdown, resetDate } = useResetCountdown(() => props.resetsAt);
 const severityLabel = computed(() => t(`provider.status.${severity.value}`));
+
+// Claude liefert für ein unberührtes Fenster keinen Reset: Es startet erst
+// mit der nächsten Nachricht.
+const resetText = computed(() =>
+  !props.resetsAt && props.remaining >= 100
+    ? t("provider.resetIdle")
+    : countdown.value,
+);
 
 /**
  * Gefüllt heißt *verfügbar* – wie die große Zahl und die Kopfzeile der
@@ -36,11 +52,24 @@ const fill = computed(() =>
 <template>
   <div class="meter">
     <div class="flex items-baseline justify-between gap-3">
-      <span
-        class="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold tracking-[0.02em] text-[var(--brand-ink-muted)]"
-      >
-        {{ label }}
-      </span>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <span
+            class="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold tracking-[0.02em] text-[var(--brand-ink-muted)]"
+            tabindex="0"
+          >
+            {{ label }}
+            <span class="font-medium tabular-nums text-brand-ink-subtle"
+              >· {{ resetText }}</span
+            >
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">{{
+          resetDate
+            ? t("provider.resetAt", { date: resetDate })
+            : t("provider.resetIdleHint")
+        }}</TooltipContent>
+      </Tooltip>
       <span class="shrink-0 text-[0.75rem] tabular-nums font-semibold">
         {{ t("provider.free", { value: Math.round(value) }) }}
       </span>

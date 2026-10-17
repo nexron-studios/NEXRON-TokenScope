@@ -103,9 +103,6 @@ const longest = computed(() =>
 const { countdown, resetDate, isDue } = useResetCountdown(
   () => longest.value?.resets_at,
 );
-const { countdown: primaryCountdown, resetDate: primaryResetDate } =
-  useResetCountdown(() => primary.value?.resets_at);
-
 const sourceLabel = computed(() =>
   t(`provider.source.${props.provider.source}`),
 );
@@ -306,23 +303,8 @@ const updatedRelative = computed(() => {
             </TooltipTrigger>
             <TooltipContent side="bottom">{{ resetDate }}</TooltipContent>
           </Tooltip>
-          <!-- Das kurze Fenster rückt in die Fußnote: im Alltag gefragt, aber
-               nicht die Antwort auf „wann ist wieder alles frei“. -->
-          <Tooltip
-            v-if="longest !== primary && primary.resets_at"
-            :disabled="!primaryResetDate"
-          >
-            <TooltipTrigger as-child>
-              <p
-                class="text-[0.6875rem] text-brand-ink-subtle tabular-nums whitespace-nowrap"
-                tabindex="0"
-              >
-                {{ windowLabel(primary) }} · {{ primaryCountdown }}
-              </p>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{{ primaryResetDate }}</TooltipContent>
-          </Tooltip>
-          <p v-else-if="resetDate" class="text-[0.6875rem] text-brand-ink-subtle">
+          <!-- Den Reset jedes einzelnen Fensters nennt sein Balken. -->
+          <p v-if="resetDate" class="text-[0.6875rem] text-brand-ink-subtle">
             {{ resetDate }}
           </p>
         </div>
@@ -335,6 +317,7 @@ const updatedRelative = computed(() => {
             :key="window.key"
             :remaining="window.remaining_percent"
             :label="windowLabel(window)"
+            :resets-at="window.resets_at"
           />
         </div>
 
