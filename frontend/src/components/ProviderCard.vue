@@ -9,7 +9,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useResetCountdown } from "@/composables/useResetCountdown";
 import { useI18n } from "@/composables/useI18n";
 import {
   brandOf,
@@ -24,7 +23,6 @@ import {
   ClockFading,
   OctagonAlert,
   ScrollText,
-  Timer,
   TriangleAlert,
   type LucideIcon,
 } from "@lucide/vue";
@@ -87,22 +85,6 @@ const quotaStyle = computed((): Record<string, string> => {
   };
 });
 
-/**
- * Groß steht der Reset des längsten Fensters: Erst danach ist wieder alles
- * frei. Bei Gleichstand gewinnt das zuerst sortierte (`seven_day` vor
- * `seven_day_opus`).
- */
-const longest = computed(() =>
-  props.provider.windows.reduce<UsageWindow | undefined>(
-    (best, window) =>
-      (window.window_minutes ?? 0) > (best?.window_minutes ?? 0) ? window : best,
-    primary.value,
-  ),
-);
-
-const { countdown, resetDate, isDue } = useResetCountdown(
-  () => longest.value?.resets_at,
-);
 const sourceLabel = computed(() =>
   t(`provider.source.${props.provider.source}`),
 );
@@ -241,28 +223,12 @@ const updatedRelative = computed(() => {
     <div v-if="primary" class="body">
       <div class="flex items-end justify-between gap-4">
         <div class="min-w-0">
-          <p class="eyebrow-row">
-            <span class="eyebrow">{{
+          <p class="eyebrow truncate">
+            {{
               t(provider.stale ? "provider.lastKnown" : "provider.available", {
                 label: windowLabel(primary),
               })
-            }}</span>
-            <!-- Zustand steht neben der Bezeichnung: Symbol und Wort tragen
-                 die Bedeutung, die Farbe verstärkt sie nur. -->
-            <span
-              class="state"
-              :style="{
-                color: severity === 'ok' ? undefined : SEVERITY[severity].color,
-              }"
-            >
-              <component
-                :is="stateIcon"
-                class="size-[0.85rem] shrink-0"
-                :stroke-width="2.4"
-                aria-hidden="true"
-              />
-              {{ provider.stale ? t("provider.status.stale") : severityLabel }}
-            </span>
+            }}
           </p>
           <p class="figure" :style="quotaStyle">
             {{ Math.round(primary.remaining_percent)
@@ -270,44 +236,22 @@ const updatedRelative = computed(() => {
           </p>
         </div>
 
-        <div class="shrink-0 text-right">
-          <p class="eyebrow inline-flex items-center gap-1.5">
-            <Timer
-              class="size-[0.8rem] shrink-0"
-              :stroke-width="2.4"
-              aria-hidden="true"
-            />
-            {{
-              t(
-                provider.stale && isDue
-                  ? "provider.resetWas"
-                  : "provider.reset",
-              )
-            }}<template v-if="longest && longest !== primary">
-              · {{ windowLabel(longest) }}</template
-            >
-          </p>
-          <!-- „bereits erfolgt“ ist ein Satz, keine Uhrzeit: In der Größe der
-               Countdown-Ziffern verdrängte er die Zeile links. -->
-          <Tooltip :disabled="!resetDate">
-            <TooltipTrigger as-child>
-              <p
-                class="countdown"
-                :class="{ 'countdown-word': provider.stale && isDue }"
-                :tabindex="resetDate ? 0 : undefined"
-              >
-                {{
-                  provider.stale && isDue ? t("provider.expired") : countdown
-                }}
-              </p>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{{ resetDate }}</TooltipContent>
-          </Tooltip>
-          <!-- Den Reset jedes einzelnen Fensters nennt sein Balken. -->
-          <p v-if="resetDate" class="text-[0.6875rem] text-brand-ink-subtle">
-            {{ resetDate }}
-          </p>
-        </div>
+        <!-- Die Resets nennen die Balken. Hier steht der Zustand: Symbol und
+             Wort tragen die Bedeutung, die Farbe verstärkt sie nur. -->
+        <span
+          class="mb-1.5 inline-flex shrink-0 items-center gap-[0.3rem] whitespace-nowrap rounded-full border border-brand-hairline bg-brand-surface-raised px-2.5 py-1 text-[0.6875rem] font-extrabold text-brand-ink-muted"
+          :style="{
+            color: severity === 'ok' ? undefined : SEVERITY[severity].color,
+          }"
+        >
+          <component
+            :is="stateIcon"
+            class="size-[0.85rem] shrink-0"
+            :stroke-width="2.4"
+            aria-hidden="true"
+          />
+          {{ provider.stale ? t("provider.status.stale") : severityLabel }}
+        </span>
       </div>
 
       <div class="body-row">
@@ -526,38 +470,6 @@ const updatedRelative = computed(() => {
   opacity: 0.72;
 }
 
-.countdown {
-  margin-top: 0.15rem;
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.countdown-word {
-  font-size: 0.8125rem;
-  line-height: 1.3;
-}
-
-/* Wird es eng, rutscht der Zustand als Ganzes in die zweite Zeile – lieber
-   das, als dass beide Angaben mitten im Wort brechen. */
-.eyebrow-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.1rem 0.55rem;
-}
-
-.state {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--brand-ink-muted);
-  font-size: 0.6875rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
 /* Balken und Begleiter teilen sich eine Zeile: Die Meterspalte ist bei zwei
    Fenstern ohnehin höher als er, damit kostet er keine zusätzliche Höhe. */
 /* Die Zeile nimmt die verbleibende Höhe des Rumpfs – erst dadurch ist sie für
@@ -707,10 +619,6 @@ const updatedRelative = computed(() => {
 
   .figure {
     font-size: 2.35rem;
-  }
-
-  .countdown {
-    font-size: 0.95rem;
   }
 
   .body-row {
