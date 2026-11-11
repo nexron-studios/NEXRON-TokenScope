@@ -1,4 +1,22 @@
-# NEXRON-TokenScope
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/readme-banner-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/brand/readme-banner-light.svg">
+  <img src="docs/brand/readme-banner-dark.svg" alt="TokenScope by NEXRON Studios: what is left of your Claude Code and Codex quotas, at a glance" width="100%">
+</picture>
+
+<br><br>
+
+<img src="https://img.shields.io/badge/Vue-3-d97757?style=flat-square&labelColor=19191a&logo=vuedotjs&logoColor=f0efec" alt="Vue 3">
+<img src="https://img.shields.io/badge/FastAPI-local_API-d97757?style=flat-square&labelColor=19191a&logo=fastapi&logoColor=f0efec" alt="FastAPI, local API">
+<img src="https://img.shields.io/badge/Tauri-desktop-d97757?style=flat-square&labelColor=19191a&logo=tauri&logoColor=f0efec" alt="Tauri desktop app">
+<img src="https://img.shields.io/badge/Raspberry_Pi-7%22_kiosk-d97757?style=flat-square&labelColor=19191a&logo=raspberrypi&logoColor=f0efec" alt="Raspberry Pi 7-inch kiosk">
+<img src="https://img.shields.io/badge/license-MIT-d97757?style=flat-square&labelColor=19191a" alt="MIT license">
+
+</div>
+
+<br>
 
 Lokales Dashboard für die verbleibenden Kontingente von **Claude Code** und
 **Codex**. Ein kleiner FastAPI-Dienst liest die Daten aus den Dateien, die
@@ -373,3 +391,7 @@ zugänglich macht, müsste das Ganze unter AGPL-3.0 stellen. Solange es auf dem
 eigenen Panel im eigenen Netz läuft, ist das folgenlos; vor einer
 Veröffentlichung wären die Möglichkeiten: Sprites herausnehmen, ersetzen, oder
 das Projekt auf AGPL-3.0 umstellen.
+
+<br>
+
+<div align="center"><sub>TokenScope is a NEXRON Studios tool. Banner from <code>docs/brand/banner.json</code>; coral from the Claude accent in <code>frontend/src/theme/brands.ts</code>.</sub></div>

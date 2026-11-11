@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="190 170 640 660" width="640" height="660">
+  <!-- The chart of desktop/icon.png redrawn as vectors, without its tile, in the Claude accent of frontend/src/theme/brands.ts. -->
+  <g fill="#d97757">
+    <rect x="228" y="599" width="142" height="216" rx="12"/>
+    <rect x="441" y="490" width="142" height="325" rx="12"/>
+    <rect x="655" y="352" width="142" height="463" rx="12"/>
+    <polyline points="299,486 512,383 726,233" fill="none" stroke="#d97757" stroke-width="26" stroke-linejoin="round"/>
+    <circle cx="299" cy="486" r="41"/>
+    <circle cx="512" cy="383" r="41"/>
+    <circle cx="726" cy="233" r="41"/>
+  </g>
+</svg>

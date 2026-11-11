@@ -1,0 +1,9 @@
+{
+  "name": "TokenScope",
+  "tagline": "What is left of your Claude Code and Codex quotas, at a glance",
+  "glyph": "glyph.svg",
+  "brand": "#d97757",
+  "brand_light": "#d0704e",
+  "pattern": "dots",
+  "out": "."
+}
